@@ -70,6 +70,19 @@ class Edifice_DB {
     public static function maybe_migrate() {
         global $wpdb;
 
+        // ── Migration 0: Rename WP options laki_hub_* → edifice_* ───────────────
+        $option_map = [
+            'laki_hub_page_id'    => 'edifice_page_id',
+            'laki_hub_db_version' => 'edifice_db_version',
+        ];
+        foreach ($option_map as $old_key => $new_key) {
+            $val = get_option($old_key);
+            if ($val !== false && get_option($new_key) === false) {
+                update_option($new_key, $val);
+                delete_option($old_key);
+            }
+        }
+
         // ── Migration 1: Rename laki_ tables → edifice_ (one-time rename) ──────
         $table_map = [
             'laki_contacts'    => 'edifice_contacts',
