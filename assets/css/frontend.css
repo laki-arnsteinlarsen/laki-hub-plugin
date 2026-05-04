@@ -29,21 +29,21 @@ body.lh-app {
 }
 
 .lh-sidebar-logo {
+  background: #2c3e55;
   color: #fff;
   padding: 22px 20px 18px;
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.3px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.lh-logo-icon {
-  font-size: 20px;
-  filter: brightness(1.5) drop-shadow(0 0 5px rgba(255,140,30,0.6));
-}
 
+.lh-logo-icon {
+  font-size: 22px;
+}
 
 .lh-nav {
   list-style: none;
