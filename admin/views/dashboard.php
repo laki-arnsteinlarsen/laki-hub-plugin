@@ -1,15 +1,15 @@
 <?php defined('ABSPATH') || exit;
 
-$totals   = LakiHub_Revenue::get_totals();
-$contacts = LakiHub_CRM::get_all(['status' => 'active']);
-$projects = LakiHub_Projects::get_all(['status' => 'active']);
-$time_sum = LakiHub_Time::get_summary(date('Y-m-01'), date('Y-m-d'));
+$totals   = Edifice_Revenue::get_totals();
+$contacts = Edifice_CRM::get_all(['status' => 'active']);
+$projects = Edifice_Projects::get_all(['status' => 'active']);
+$time_sum = Edifice_Time::get_summary(date('Y-m-01'), date('Y-m-d'));
 $month    = date_i18n('F Y');
 ?>
 <div class="lh-wrap">
   <div class="lh-header">
     <div>
-      <h1>🏛️ Laki Hub</h1>
+      <h1>🏛️ Edifice</h1>
       <div class="lh-subtitle">God morgen, Arnstein · <?= esc_html($month) ?></div>
     </div>
   </div>

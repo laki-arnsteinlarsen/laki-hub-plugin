@@ -1,13 +1,13 @@
 <?php
 defined('ABSPATH') || exit;
 
-class LakiHub_Revenue {
+class Edifice_Revenue {
 
     public static function get_all(array $args = []): array {
         global $wpdb;
-        $tr = $wpdb->prefix . 'laki_revenue';
-        $tc = $wpdb->prefix . 'laki_contacts';
-        $tp = $wpdb->prefix . 'laki_projects';
+        $tr = $wpdb->prefix . 'edifice_revenue';
+        $tc = $wpdb->prefix . 'edifice_contacts';
+        $tp = $wpdb->prefix . 'edifice_projects';
         $where = 'WHERE 1=1';
         if (!empty($args['status']))     $where .= $wpdb->prepare(' AND r.status = %s', $args['status']);
         if (!empty($args['contact_id'])) $where .= $wpdb->prepare(' AND r.contact_id = %d', $args['contact_id']);
@@ -23,7 +23,7 @@ class LakiHub_Revenue {
 
     public static function get_totals(): array {
         global $wpdb;
-        $t = $wpdb->prefix . 'laki_revenue';
+        $t = $wpdb->prefix . 'edifice_revenue';
         $year = date('Y');
         return [
             'invoiced_ytd' => (float)$wpdb->get_var("SELECT SUM(amount) FROM $t WHERE YEAR(date)=$year AND status IN ('sent','paid')"),
@@ -35,7 +35,7 @@ class LakiHub_Revenue {
 
     public static function save(array $data): int|false {
         global $wpdb;
-        $t = $wpdb->prefix . 'laki_revenue';
+        $t = $wpdb->prefix . 'edifice_revenue';
         $fields = [
             'contact_id'  => !empty($data['contact_id'])  ? (int)$data['contact_id']  : null,
             'project_id'  => !empty($data['project_id'])  ? (int)$data['project_id']  : null,
@@ -58,17 +58,17 @@ class LakiHub_Revenue {
 
     public static function delete(int $id): bool {
         global $wpdb;
-        return (bool)$wpdb->delete($wpdb->prefix . 'laki_revenue', ['id' => $id]);
+        return (bool)$wpdb->delete($wpdb->prefix . 'edifice_revenue', ['id' => $id]);
     }
 
     public static function ajax_save() {
-        check_ajax_referer('laki_hub_nonce', 'nonce');
+        check_ajax_referer('edifice_nonce', 'nonce');
         $id = self::save($_POST);
         $id ? wp_send_json_success(['id' => $id]) : wp_send_json_error();
     }
 
     public static function ajax_delete() {
-        check_ajax_referer('laki_hub_nonce', 'nonce');
+        check_ajax_referer('edifice_nonce', 'nonce');
         self::delete((int)($_POST['id'] ?? 0)) ? wp_send_json_success() : wp_send_json_error();
     }
 }

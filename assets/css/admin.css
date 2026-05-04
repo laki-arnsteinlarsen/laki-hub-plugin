@@ -1,4 +1,4 @@
-/* ─── Laki Hub — Admin CSS ─────────────────────────────────────────────────── */
+/* ─── Edifice — Admin CSS ─────────────────────────────────────────────────── */
 
 :root {
   --lh-bg:        #f0f2f5;
@@ -333,3 +333,106 @@
 .amount { font-variant-numeric: tabular-nums; font-weight: 600; }
 .amount-pos { color: var(--lh-green); }
 .amount-neg { color: var(--lh-red); }
+
+/* ─── Timer widget ─────────────────────────────────────────────────────────── */
+.lh-timer-card { padding: 16px 20px; }
+.lh-timer-label { font-size: 12px; font-weight: 600; color: var(--lh-muted); text-transform: uppercase; letter-spacing: .5px; margin: 0 0 10px; }
+.lh-timer-start-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lh-input { padding: 8px 12px; border: 1px solid var(--lh-border); border-radius: 7px; font-size: 14px; color: var(--lh-text); background: var(--lh-bg); outline: none; }
+.lh-input:focus { border-color: var(--lh-accent); background: #fff; }
+.lh-input-grow { flex: 1; min-width: 180px; }
+.lh-timer-running-row { display: flex; align-items: center; gap: 14px; }
+.lh-timer-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lh-green); box-shadow: 0 0 0 3px rgba(22,163,74,.2); animation: lh-pulse 1.5s infinite; flex-shrink: 0; }
+@keyframes lh-pulse { 0%,100%{box-shadow:0 0 0 3px rgba(22,163,74,.2)} 50%{box-shadow:0 0 0 6px rgba(22,163,74,.08)} }
+.lh-timer-running-label { flex: 1; font-weight: 500; color: var(--lh-text); }
+.lh-timer-clock { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--lh-accent); letter-spacing: -1px; }
+
+/* ─── Period bar ────────────────────────────────────────────────────────────── */
+.lh-period-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.lh-period-tabs { display: flex; gap: 4px; background: var(--lh-surface); border: 1px solid var(--lh-border); border-radius: 9px; padding: 3px; }
+.lh-period-tab { padding: 6px 14px; border: none; background: transparent; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--lh-muted); cursor: pointer; transition: background .12s, color .12s; }
+.lh-period-tab:hover { color: var(--lh-text); }
+.lh-period-tab.active { background: var(--lh-accent); color: #fff; }
+
+/* ── Brreg dropdown ────────────────────────────────────────────────────── */
+.lh-brreg-results {
+  position: absolute;
+  z-index: 999;
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid var(--lh-border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.12);
+  max-height: 320px;
+  overflow-y: auto;
+  display: none;
+}
+.lh-form-row { position: relative; }
+.lh-brreg-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--lh-border);
+  transition: background .1s;
+}
+.lh-brreg-item:last-child { border-bottom: none; }
+.lh-brreg-item:hover { background: var(--lh-bg-alt, #f8f8fb); }
+.lh-brreg-item-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--lh-text);
+  margin-bottom: 3px;
+}
+.lh-brreg-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--lh-muted);
+}
+.lh-brreg-item-meta span::before { content: ''; }
+.lh-brreg-item-meta span + span::before { content: '·'; margin-right: 6px; }
+.lh-brreg-naring {
+  font-style: italic;
+  color: var(--lh-primary, #1e40af);
+}
+.lh-brreg-loading,
+.lh-brreg-empty {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--lh-muted);
+}
+
+/* ── Kategori-checkboxer ────────────────────────────────────────────────── */
+.lh-check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0;
+}
+.lh-check-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+}
+.lh-check-label input[type=checkbox] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--lh-primary, #1e40af);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.lh-check-label .lh-badge {
+  opacity: .5;
+  transition: opacity .15s;
+}
+.lh-check-label input:checked + .lh-badge {
+  opacity: 1;
+}
+/* gold-badge for Investering */
+.lh-badge-gold {
+  background: #fef3c7;
+  color: #92400e;
+}

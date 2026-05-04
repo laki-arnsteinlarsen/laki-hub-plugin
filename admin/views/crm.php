@@ -1,6 +1,16 @@
 <?php defined('ABSPATH') || exit;
-$contacts = LakiHub_CRM::get_all();
+$contacts = Edifice_CRM::get_all();
+$categories = Edifice_CRM::CATEGORIES;
+
 $status_labels = ['active' => ['Aktiv','green'], 'lead' => ['Lead','blue'], 'inactive' => ['Inaktiv','gray']];
+$type_labels   = [
+    'company'     => ['Selskap',     'blue'],
+    'person'      => ['Person',      'purple'],
+    'association' => ['Forening/lag','teal'],
+    'foundation'  => ['Stiftelse',   'orange'],
+    'public'      => ['Offentlig',   'gray'],
+    'other'       => ['Annet',       'gray'],
+];
 ?>
 <div class="lh-wrap">
   <div class="lh-header">
@@ -9,9 +19,7 @@ $status_labels = ['active' => ['Aktiv','green'], 'lead' => ['Lead','blue'], 'ina
   </div>
 
   <div class="lh-card">
-    <div class="lh-card-head">
-      <h2>Alle kontakter</h2>
-    </div>
+    <div class="lh-card-head"><h2>Alle kontakter</h2></div>
     <div class="lh-card-body" style="padding:16px 20px 0">
       <div class="lh-search">
         <input type="text" id="crm-search" placeholder="Søk navn, org.nr, e-post…">
@@ -21,27 +29,38 @@ $status_labels = ['active' => ['Aktiv','green'], 'lead' => ['Lead','blue'], 'ina
       <?php if ($contacts): ?>
       <table class="lh-table" id="crm-table">
         <thead>
-          <tr>
-            <th>Navn</th><th>Org.nr</th><th>E-post</th><th>Telefon</th><th>Status</th><th></th>
-          </tr>
+          <tr><th>Navn</th><th>Kategorier</th><th>Org.nr</th><th>E-post</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
         <?php foreach ($contacts as $c):
           [$slabel, $scolor] = $status_labels[$c['status']] ?? ['?','gray'];
+          [$tlabel, $tcolor] = $type_labels[$c['type']]     ?? ['?','gray'];
         ?>
           <tr>
-            <td><strong><?= esc_html($c['name']) ?></strong>
-                <?php if ($c['type'] === 'company'): ?><span style="color:var(--lh-muted);font-size:11px;margin-left:5px">AS</span><?php endif; ?></td>
+            <td>
+              <strong><?= esc_html($c['name']) ?></strong>
+              <span class="lh-badge lh-badge-<?= $tcolor ?>" style="margin-left:5px;font-size:10px"><?= $tlabel ?></span>
+            </td>
+            <td>
+              <?php if (!empty($c['category'])): ?>
+                <?php foreach ($c['category'] as $cat):
+                  $catColor = $categories[$cat] ?? 'gray';
+                ?>
+                  <span class="lh-badge lh-badge-<?= $catColor ?>" style="margin-right:3px"><?= esc_html($cat) ?></span>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <span style="color:var(--lh-muted)">—</span>
+              <?php endif; ?>
+            </td>
             <td><?= esc_html($c['org_nr']) ?: '—' ?></td>
             <td><?= esc_html($c['email']) ?: '—' ?></td>
-            <td><?= esc_html($c['phone']) ?: '—' ?></td>
             <td><span class="lh-badge lh-badge-<?= $scolor ?>"><?= $slabel ?></span></td>
             <td class="actions">
               <button class="lh-btn lh-btn-secondary lh-btn-sm lh-edit-btn"
                 data-modal="modal-crm"
                 data-record="<?= esc_attr(json_encode($c)) ?>">Rediger</button>
               <button class="lh-btn lh-btn-danger lh-btn-sm lh-delete-btn"
-                data-action="laki_crm_delete" data-id="<?= $c['id'] ?>">Slett</button>
+                data-action="edifice_crm_delete" data-id="<?= $c['id'] ?>">Slett</button>
             </td>
           </tr>
         <?php endforeach; ?>
@@ -62,10 +81,11 @@ $status_labels = ['active' => ['Aktiv','green'], 'lead' => ['Lead','blue'], 'ina
       <button class="lh-modal-close">×</button>
     </div>
     <div class="lh-modal-body">
-      <form class="lh-ajax-form">
-        <input type="hidden" name="ajax_action" value="laki_crm_save">
+      <form class="lh-ajax-form" id="crm-form">
+        <input type="hidden" name="ajax_action" value="edifice_crm_save">
         <input type="hidden" name="id" value="">
         <input type="hidden" name="brreg_data" value="">
+        <input type="hidden" name="category" value="[]">
 
         <div class="lh-form-row">
           <label>Søk i Brreg</label>
@@ -77,8 +97,12 @@ $status_labels = ['active' => ['Aktiv','green'], 'lead' => ['Lead','blue'], 'ina
           <div class="lh-form-row">
             <label>Type</label>
             <select name="type">
-              <option value="company">Selskap</option>
-              <option value="person">Person</option>
+              <option value="company">Selskap (AS, ANS, NUF…)</option>
+              <option value="person">Person / ENK</option>
+              <option value="association">Forening / lag</option>
+              <option value="foundation">Stiftelse</option>
+              <option value="public">Offentlig sektor</option>
+              <option value="other">Annet</option>
             </select>
           </div>
           <div class="lh-form-row">
@@ -95,29 +119,38 @@ $status_labels = ['active' => ['Aktiv','green'], 'lead' => ['Lead','blue'], 'ina
           <label>Navn *</label>
           <input type="text" name="name" required>
         </div>
+
+        <div class="lh-form-row">
+          <label>Kategorier</label>
+          <div class="lh-check-group">
+            <?php foreach ($categories as $cat => $color): ?>
+            <label class="lh-check-label">
+              <input type="checkbox" class="lh-cat-check" value="<?= esc_attr($cat) ?>">
+              <span class="lh-badge lh-badge-<?= $color ?>"><?= esc_html($cat) ?></span>
+            </label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+
         <div class="lh-form-grid">
           <div class="lh-form-row">
             <label>Org.nr</label>
             <input type="text" name="org_nr" placeholder="000 000 000">
           </div>
           <div class="lh-form-row">
-            <label>Kategori</label>
-            <input type="text" name="category" placeholder="Klient, Partner, Leverandør…">
+            <label>E-post</label>
+            <input type="email" name="email">
           </div>
         </div>
         <div class="lh-form-grid">
           <div class="lh-form-row">
-            <label>E-post</label>
-            <input type="email" name="email">
-          </div>
-          <div class="lh-form-row">
             <label>Telefon</label>
             <input type="text" name="phone">
           </div>
-        </div>
-        <div class="lh-form-row">
-          <label>Adresse</label>
-          <input type="text" name="address">
+          <div class="lh-form-row">
+            <label>Adresse</label>
+            <input type="text" name="address">
+          </div>
         </div>
         <div class="lh-form-row">
           <label>Notater</label>
@@ -141,4 +174,10 @@ document.getElementById('crm-search')?.addEventListener('input', function(){
     row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
 });
+
+// Sync checkboxer → hidden category-felt før innsending
+document.getElementById('crm-form')?.addEventListener('submit', function() {
+  const checked = [...this.querySelectorAll('.lh-cat-check:checked')].map(cb => cb.value);
+  this.querySelector('[name=category]').value = JSON.stringify(checked);
+}, true); // capture = true, kjør FØR generic handler
 </script>

@@ -1,41 +1,47 @@
 <?php
 /**
- * Plugin Name: Laki Hub
+ * Plugin Name: Edifice
  * Description: Internt dashbord for Laki AS — CRM, timeføring, prosjekter, inntekt og nyheter.
  * Version: 1.0.0
  * Author: Laki AS
- * Text Domain: laki-hub
+ * Text Domain: edifice
  */
 
 defined('ABSPATH') || exit;
 
-define('LAKI_HUB_VERSION', '1.0.0');
-define('LAKI_HUB_DIR', plugin_dir_path(__FILE__));
-define('LAKI_HUB_URL', plugin_dir_url(__FILE__));
+define('EDIFICE_VERSION', '1.0.0');
+define('EDIFICE_DIR', plugin_dir_path(__FILE__));
+define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
-require_once LAKI_HUB_DIR . 'includes/class-db.php';
-require_once LAKI_HUB_DIR . 'includes/class-brreg.php';
-require_once LAKI_HUB_DIR . 'includes/class-crm.php';
-require_once LAKI_HUB_DIR . 'includes/class-projects.php';
-require_once LAKI_HUB_DIR . 'includes/class-time.php';
-require_once LAKI_HUB_DIR . 'includes/class-revenue.php';
-require_once LAKI_HUB_DIR . 'admin/admin.php';
-require_once LAKI_HUB_DIR . 'frontend/class-frontend.php';
+require_once EDIFICE_DIR . 'includes/class-db.php';
+require_once EDIFICE_DIR . 'includes/class-brreg.php';
+require_once EDIFICE_DIR . 'includes/class-crm.php';
+require_once EDIFICE_DIR . 'includes/class-projects.php';
+require_once EDIFICE_DIR . 'includes/class-time.php';
+require_once EDIFICE_DIR . 'includes/class-revenue.php';
+require_once EDIFICE_DIR . 'admin/admin.php';
+require_once EDIFICE_DIR . 'frontend/class-frontend.php';
 
-register_activation_hook(__FILE__, ['LakiHub_DB', 'install']);
+register_activation_hook(__FILE__, ['Edifice_DB', 'install']);
 
 add_action('plugins_loaded', function () {
-    LakiHub_Admin::init();
-    LakiHub_Frontend::init();
+    Edifice_DB::maybe_migrate();
+    Edifice_Admin::init();
+    Edifice_Frontend::init();
 });
 
 // AJAX handlers
-add_action('wp_ajax_laki_brreg_lookup',    ['LakiHub_Brreg', 'ajax_lookup']);
-add_action('wp_ajax_laki_crm_save',        ['LakiHub_CRM',   'ajax_save']);
-add_action('wp_ajax_laki_crm_delete',      ['LakiHub_CRM',   'ajax_delete']);
-add_action('wp_ajax_laki_time_save',       ['LakiHub_Time',  'ajax_save']);
-add_action('wp_ajax_laki_time_delete',     ['LakiHub_Time',  'ajax_delete']);
-add_action('wp_ajax_laki_project_save',    ['LakiHub_Projects', 'ajax_save']);
-add_action('wp_ajax_laki_project_delete',  ['LakiHub_Projects', 'ajax_delete']);
-add_action('wp_ajax_laki_revenue_save',    ['LakiHub_Revenue', 'ajax_save']);
-add_action('wp_ajax_laki_revenue_delete',  ['LakiHub_Revenue', 'ajax_delete']);
+add_action('wp_ajax_edifice_brreg_lookup',    ['Edifice_Brreg', 'ajax_lookup']);
+add_action('wp_ajax_edifice_crm_save',        ['Edifice_CRM',   'ajax_save']);
+add_action('wp_ajax_edifice_crm_delete',      ['Edifice_CRM',   'ajax_delete']);
+add_action('wp_ajax_edifice_time_save',        ['Edifice_Time', 'ajax_save']);
+add_action('wp_ajax_edifice_time_delete',      ['Edifice_Time', 'ajax_delete']);
+add_action('wp_ajax_edifice_time_start',       ['Edifice_Time', 'ajax_start_timer']);
+add_action('wp_ajax_edifice_time_stop',        ['Edifice_Time', 'ajax_stop_timer']);
+add_action('wp_ajax_edifice_time_active',      ['Edifice_Time', 'ajax_active_timer']);
+add_action('wp_ajax_edifice_time_period_data', ['Edifice_Time', 'ajax_period_data']);
+add_action('wp_ajax_edifice_time_export',      ['Edifice_Time', 'ajax_export']);
+add_action('wp_ajax_edifice_project_save',    ['Edifice_Projects', 'ajax_save']);
+add_action('wp_ajax_edifice_project_delete',  ['Edifice_Projects', 'ajax_delete']);
+add_action('wp_ajax_edifice_revenue_save',    ['Edifice_Revenue', 'ajax_save']);
+add_action('wp_ajax_edifice_revenue_delete',  ['Edifice_Revenue', 'ajax_delete']);

@@ -1,6 +1,6 @@
 <?php defined('ABSPATH') || exit;
-$projects  = LakiHub_Projects::get_all();
-$contacts  = LakiHub_CRM::get_all();
+$projects  = Edifice_Projects::get_all();
+$contacts  = Edifice_CRM::get_all();
 $status_map = [
   'active'    => ['Aktiv',    'green'],
   'on-hold'   => ['På vent',  'yellow'],
@@ -31,7 +31,13 @@ $status_map = [
                 <div style="font-size:12px;color:var(--lh-muted);margin-top:2px"><?= esc_html(wp_trim_words($p['description'], 10)) ?></div>
               <?php endif; ?>
             </td>
-            <td><?= esc_html($p['contact_name'] ?? '—') ?></td>
+            <td>
+              <?php if ($p['contact_name']): ?>
+                <?= esc_html($p['contact_name']) ?>
+              <?php else: ?>
+                <span class="lh-badge lh-badge-gray">Internt</span>
+              <?php endif; ?>
+            </td>
             <td><span class="lh-badge lh-badge-<?= $scolor ?>"><?= $slabel ?></span></td>
             <td><?= $p['start_date'] ? date_i18n('d.m.y', strtotime($p['start_date'])) : '—' ?></td>
             <td><?= $p['end_date']   ? date_i18n('d.m.y', strtotime($p['end_date']))   : '—' ?></td>
@@ -40,7 +46,7 @@ $status_map = [
               <button class="lh-btn lh-btn-secondary lh-btn-sm lh-edit-btn"
                 data-modal="modal-project" data-record="<?= esc_attr(json_encode($p)) ?>">Rediger</button>
               <button class="lh-btn lh-btn-danger lh-btn-sm lh-delete-btn"
-                data-action="laki_project_delete" data-id="<?= $p['id'] ?>">Slett</button>
+                data-action="edifice_project_delete" data-id="<?= $p['id'] ?>">Slett</button>
             </td>
           </tr>
         <?php endforeach; ?>
@@ -59,7 +65,7 @@ $status_map = [
     <div class="lh-modal-head"><h3>Prosjekt</h3><button class="lh-modal-close">×</button></div>
     <div class="lh-modal-body">
       <form class="lh-ajax-form">
-        <input type="hidden" name="ajax_action" value="laki_project_save">
+        <input type="hidden" name="ajax_action" value="edifice_project_save">
         <input type="hidden" name="id" value="">
         <div class="lh-form-row">
           <label>Navn *</label>
@@ -67,7 +73,7 @@ $status_map = [
         </div>
         <div class="lh-form-grid">
           <div class="lh-form-row">
-            <label>Klient</label>
+            <label>Klient <span style="font-weight:400;color:var(--lh-muted)">(tom = internt prosjekt)</span></label>
             <select name="contact_id">
               <option value="">— Velg —</option>
               <?php foreach ($contacts as $c): ?>

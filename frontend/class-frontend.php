@@ -1,11 +1,11 @@
 <?php
 /**
- * Laki Hub — Front-end app renderer
+ * Edifice — Front-end app renderer
  * Serves the dashboard at /hub/ as a full-screen SPA-style app.
  */
 defined('ABSPATH') || exit;
 
-class LakiHub_Frontend {
+class Edifice_Frontend {
 
     public static function init() {
         add_action('init',              [__CLASS__, 'create_hub_page']);
@@ -15,16 +15,21 @@ class LakiHub_Frontend {
 
     /**
      * Create the /hub/ page once on first load (idempotent).
+     * Also sets it as the WordPress front page.
      */
     public static function create_hub_page() {
-        $stored_id = (int) get_option('laki_hub_page_id');
+        $stored_id = (int) get_option('edifice_page_id');
         if ($stored_id) {
             $page = get_post($stored_id);
-            if ($page && $page->post_status === 'publish') return;
+            if ($page && $page->post_status === 'publish') {
+                // Ensure front page is still set correctly (may have been reset)
+                self::set_as_front_page($stored_id);
+                return;
+            }
         }
 
         $page_id = wp_insert_post([
-            'post_title'   => 'Laki Hub',
+            'post_title'   => 'Edifice',
             'post_name'    => 'hub',
             'post_status'  => 'publish',
             'post_type'    => 'page',
@@ -33,7 +38,18 @@ class LakiHub_Frontend {
         ]);
 
         if (!is_wp_error($page_id)) {
-            update_option('laki_hub_page_id', $page_id);
+            update_option('edifice_page_id', $page_id);
+            self::set_as_front_page($page_id);
+        }
+    }
+
+    /**
+     * Set a page as the WordPress static front page.
+     */
+    private static function set_as_front_page(int $page_id) {
+        if ((int) get_option('page_on_front') !== $page_id) {
+            update_option('show_on_front', 'page');
+            update_option('page_on_front', $page_id);
         }
     }
 
@@ -57,7 +73,7 @@ class LakiHub_Frontend {
      * Intercept requests to /hub/ and render the full-screen app.
      */
     public static function render_hub() {
-        $page_id = (int) get_option('laki_hub_page_id');
+        $page_id = (int) get_option('edifice_page_id');
         if (!$page_id) return;
         if (!is_page($page_id) && !is_page('hub')) return;
         if (!is_user_logged_in()) return; // login_wall handles redirect
@@ -70,9 +86,9 @@ class LakiHub_Frontend {
      * Output the full HTML app shell with all sections pre-rendered.
      */
     public static function output_app() {
-        $plugin_url = LAKI_HUB_URL;
+        $plugin_url = EDIFICE_URL;
         $ajax_url   = admin_url('admin-ajax.php');
-        $nonce      = wp_create_nonce('laki_hub_nonce');
+        $nonce      = wp_create_nonce('edifice_nonce');
         $logout_url = wp_logout_url(home_url('/hub/'));
         $user       = wp_get_current_user();
         ?>
@@ -81,7 +97,7 @@ class LakiHub_Frontend {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Laki Hub</title>
+  <title>Edifice</title>
   <link rel="stylesheet" href="<?= esc_url($plugin_url) ?>assets/css/admin.css">
   <link rel="stylesheet" href="<?= esc_url($plugin_url) ?>assets/css/frontend.css">
 </head>
@@ -89,7 +105,7 @@ class LakiHub_Frontend {
 
   <!-- Sidebar -->
   <nav class="lh-sidebar">
-    <div class="lh-sidebar-logo">🏛️ <span>Laki Hub</span></div>
+    <div class="lh-sidebar-logo">🏛️ <span>Edifice</span></div>
     <ul class="lh-nav">
       <li><a href="#dashboard" class="lh-nav-link active" data-section="dashboard">📊 Dashboard</a></li>
       <li><a href="#crm"       class="lh-nav-link"        data-section="crm">👥 CRM</a></li>
@@ -107,31 +123,32 @@ class LakiHub_Frontend {
   <main class="lh-main">
 
     <div class="lh-section" id="section-dashboard">
-      <?php include LAKI_HUB_DIR . 'admin/views/dashboard.php'; ?>
+      <?php include EDIFICE_DIR . 'admin/views/dashboard.php'; ?>
     </div>
 
     <div class="lh-section lh-hidden" id="section-crm">
-      <?php include LAKI_HUB_DIR . 'admin/views/crm.php'; ?>
+      <?php include EDIFICE_DIR . 'admin/views/crm.php'; ?>
     </div>
 
     <div class="lh-section lh-hidden" id="section-projects">
-      <?php include LAKI_HUB_DIR . 'admin/views/projects.php'; ?>
+      <?php include EDIFICE_DIR . 'admin/views/projects.php'; ?>
     </div>
 
     <div class="lh-section lh-hidden" id="section-time">
-      <?php include LAKI_HUB_DIR . 'admin/views/time.php'; ?>
+      <?php include EDIFICE_DIR . 'admin/views/time.php'; ?>
     </div>
 
     <div class="lh-section lh-hidden" id="section-revenue">
-      <?php include LAKI_HUB_DIR . 'admin/views/revenue.php'; ?>
+      <?php include EDIFICE_DIR . 'admin/views/revenue.php'; ?>
     </div>
 
   </main>
 
+  <script src="<?= includes_url('js/jquery/jquery.min.js') ?>"></script>
   <script>
-    var LakiHub = {
-      ajaxUrl: '<?= esc_js($ajax_url) ?>',
-      nonce:   '<?= esc_js($nonce) ?>'
+    var Edifice = {
+      ajax_url: '<?= esc_js($ajax_url) ?>',
+      nonce:    '<?= esc_js($nonce) ?>'
     };
   </script>
   <script src="<?= esc_url($plugin_url) ?>assets/js/admin.js"></script>

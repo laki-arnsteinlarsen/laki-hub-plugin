@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit;
 
-class LakiHub_Brreg {
+class Edifice_Brreg {
 
     const API = 'https://data.brreg.no/enhetsregisteret/api/enheter/';
 
@@ -41,7 +41,7 @@ class LakiHub_Brreg {
     }
 
     public static function ajax_lookup() {
-        check_ajax_referer('laki_hub_nonce', 'nonce');
+        check_ajax_referer('edifice_nonce', 'nonce');
 
         $org_nr = sanitize_text_field($_POST['org_nr'] ?? '');
         $query  = sanitize_text_field($_POST['query'] ?? '');

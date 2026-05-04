@@ -1,8 +1,8 @@
 <?php defined('ABSPATH') || exit;
-$items    = LakiHub_Revenue::get_all();
-$totals   = LakiHub_Revenue::get_totals();
-$contacts = LakiHub_CRM::get_all();
-$projects = LakiHub_Projects::get_all();
+$items    = Edifice_Revenue::get_all();
+$totals   = Edifice_Revenue::get_totals();
+$contacts = Edifice_CRM::get_all();
+$projects = Edifice_Projects::get_all();
 $status_map = [
   'draft'   => ['Utkast',   'gray'],
   'sent'    => ['Sendt',    'blue'],
@@ -62,7 +62,7 @@ $status_map = [
               <button class="lh-btn lh-btn-secondary lh-btn-sm lh-edit-btn"
                 data-modal="modal-revenue" data-record="<?= esc_attr(json_encode($item)) ?>">Rediger</button>
               <button class="lh-btn lh-btn-danger lh-btn-sm lh-delete-btn"
-                data-action="laki_revenue_delete" data-id="<?= $item['id'] ?>">Slett</button>
+                data-action="edifice_revenue_delete" data-id="<?= $item['id'] ?>">Slett</button>
             </td>
           </tr>
         <?php endforeach; ?>
@@ -81,7 +81,7 @@ $status_map = [
     <div class="lh-modal-head"><h3>Faktura / Betaling</h3><button class="lh-modal-close">×</button></div>
     <div class="lh-modal-body">
       <form class="lh-ajax-form">
-        <input type="hidden" name="ajax_action" value="laki_revenue_save">
+        <input type="hidden" name="ajax_action" value="edifice_revenue_save">
         <input type="hidden" name="id" value="">
         <div class="lh-form-grid">
           <div class="lh-form-row">

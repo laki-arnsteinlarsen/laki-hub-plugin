@@ -1,4 +1,4 @@
-/* Laki Hub — Admin JS */
+/* Edifice — Admin JS */
 (function ($) {
   'use strict';
 
@@ -34,12 +34,14 @@
 
   /* ── AJAX helper ────────────────────────────────────────────────────────── */
   window.lhAjax = (action, data, cb) => {
-    $.post(LakiHub.ajax_url, { action, nonce: LakiHub.nonce, ...data }, function (r) {
+    $.post(Edifice.ajax_url, { action, nonce: Edifice.nonce, ...data }, function (r) {
       if (r.success) {
-        toast(r.data?.msg || 'Lagret ✓', 'success');
-        cb && cb(r.data);
+        // Vis toast kun hvis responsen eksplisitt inneholder en melding
+        if (r.data && r.data.msg) toast(r.data.msg, 'success');
+        cb && cb(r);          // send hele responsen (success + data) til callback
       } else {
-        toast(r.data || 'Noe gikk galt', 'error');
+        toast((r.data && r.data.message) || r.data || 'Noe gikk galt', 'error');
+        cb && cb(r);
       }
     });
   };
@@ -71,41 +73,87 @@
   });
 
   /* ── Brreg live search ───────────────────────────────────────────────────── */
+  const brregIsOrgNr = (s) => /^\d[\d\s]{7,10}$/.test(s);
+
   let brregTimer;
   $(document).on('input', '.lh-brreg-search', function () {
     clearTimeout(brregTimer);
-    const q   = $(this).val().trim();
+    const q    = $(this).val().trim();
     const $res = $(this).siblings('.lh-brreg-results');
     if (q.length < 2) { $res.hide(); return; }
+
+    const isOrgNr = brregIsOrgNr(q);
+    const payload = isOrgNr
+      ? { action: 'edifice_brreg_lookup', nonce: Edifice.nonce, org_nr: q.replace(/\s/g, '') }
+      : { action: 'edifice_brreg_lookup', nonce: Edifice.nonce, query: q };
+
     brregTimer = setTimeout(() => {
-      $.post(LakiHub.ajax_url, {
-        action: 'laki_brreg_lookup',
-        nonce: LakiHub.nonce,
-        query: q,
-      }, function (r) {
-        if (!r.success) return;
+      $res.html('<div class="lh-brreg-loading">Søker…</div>').show();
+      $.post(Edifice.ajax_url, payload, function (r) {
+        if (!r.success) { $res.hide(); return; }
         const items = Array.isArray(r.data) ? r.data : [r.data];
-        $res.html(items.slice(0, 8).map(e =>
-          `<div class="lh-brreg-item" data-org='${JSON.stringify(e)}'>
-             <strong>${e.navn || ''}</strong>
-             <span>${e.organisasjonsnummer || ''} · ${e.organisasjonsform?.beskrivelse || ''}</span>
-           </div>`
-        ).join('')).show();
+        if (!items.length || items[0]?.error) {
+          $res.html('<div class="lh-brreg-empty">Ingen treff</div>');
+          return;
+        }
+        $res.html(items.slice(0, 8).map(e => {
+          const adr     = e.forretningsadresse || e.postadresse || {};
+          const adrLine = [(adr.adresse || []).join(' '), ((adr.postnummer || '') + ' ' + (adr.poststed || '')).trim()].filter(s => s).join(', ');
+          const naring  = e.naeringskode1?.beskrivelse || '';
+          return `<div class="lh-brreg-item" data-org='${JSON.stringify(e)}'>
+            <div class="lh-brreg-item-name">${e.navn || ''}</div>
+            <div class="lh-brreg-item-meta">
+              <span>${e.organisasjonsnummer || ''}</span>
+              <span>${e.organisasjonsform?.beskrivelse || ''}</span>
+              ${adrLine ? `<span>${adrLine}</span>` : ''}
+              ${naring  ? `<span class="lh-brreg-naring">${naring}</span>` : ''}
+            </div>
+          </div>`;
+        }).join('')).show();
       });
-    }, 300);
+    }, isOrgNr ? 100 : 350);
   });
 
   $(document).on('click', '.lh-brreg-item', function () {
-    const e   = $(this).data('org');
+    const e      = $(this).data('org');
     const $modal = $(this).closest('.lh-modal-body');
     $modal.find('[name=name]').val(e.navn || '');
     $modal.find('[name=org_nr]').val(e.organisasjonsnummer || '');
-    // Address
-    const adr = e.forretningsadresse || e.postadresse || {};
-    const addrStr = [(adr.adresse || []).join(' '), (adr.postnummer || '') + ' ' + (adr.poststed || '')].filter(Boolean).join(', ');
+    // Sett type basert på Brreg organisasjonsform.kode
+    const orgKode = e.organisasjonsform?.kode || '';
+    const brregTypeMap = {
+      // Person / enkeltpersonforetak
+      ENK: 'person', PERS: 'person',
+      // Forening / lag / innretning
+      FLI: 'association', KIRK: 'association', ORGL: 'association',
+      ADOS: 'association', IKJP: 'association',
+      // Stiftelse
+      STI: 'foundation',
+      // Offentlig sektor
+      KOMM: 'public', FYLK: 'public', STAT: 'public',
+      KF: 'public', FKF: 'public', SF: 'public', IKS: 'public',
+      // Alt annet er selskap (AS, ASA, ANS, DA, NUF, SA, BA osv.)
+    };
+    $modal.find('[name=type]').val(brregTypeMap[orgKode] || 'company');
+    // Adresse
+    const adr     = e.forretningsadresse || e.postadresse || {};
+    const addrStr = [(adr.adresse || []).join(' '), ((adr.postnummer || '') + ' ' + (adr.poststed || '')).trim()].filter(s => s).join(', ');
     $modal.find('[name=address]').val(addrStr);
+    // Fyll inn kategori fra næringskode hvis feltet er tomt
+    const naring = e.naeringskode1?.beskrivelse || '';
+    if (naring && !$modal.find('[name=category]').val()) {
+      $modal.find('[name=category]').val(naring);
+    }
     $modal.find('[name=brreg_data]').val(JSON.stringify(e));
-    $(this).closest('.lh-brreg-results').hide();
+    // Tøm søkefeltet og skjul resultater
+    $(this).closest('.lh-brreg-results').hide().prev('.lh-brreg-search').val('');
+  });
+
+  // Skjul Brreg-resultater ved klikk utenfor
+  $(document).on('click', function (e) {
+    if (!$(e.target).closest('.lh-brreg-search, .lh-brreg-results').length) {
+      $('.lh-brreg-results').hide();
+    }
   });
 
   /* ── Edit pre-fill ───────────────────────────────────────────────────────── */
@@ -113,12 +161,27 @@
     const data   = $(this).data('record');
     const target = $(this).data('modal');
     const $modal = $('#' + target);
+
+    // Nullstill checkboxer før utfylling
+    $modal.find('.lh-cat-check').prop('checked', false);
+
     Object.entries(data).forEach(([k, v]) => {
+      if (k === 'category') {
+        // v er array fra PHP — huk av matching checkboxer og oppdater hidden input
+        const cats = Array.isArray(v) ? v : (v ? JSON.parse(v) : []);
+        $modal.find('.lh-cat-check').each(function () {
+          $(this).prop('checked', cats.includes(this.value));
+        });
+        $modal.find('[name=category]').val(JSON.stringify(cats));
+        return;
+      }
       const $el = $modal.find(`[name="${k}"]`);
-      if ($el.is('select')) $el.val(v);
+      if (!$el.length) return;
+      if ($el.is('select'))               $el.val(v);
       else if ($el.is('input[type=checkbox]')) $el.prop('checked', !!v);
-      else $el.val(v);
+      else                                $el.val(v);
     });
+
     lhOpenModal(target);
   });
 

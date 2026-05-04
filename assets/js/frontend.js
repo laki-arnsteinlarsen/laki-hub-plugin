@@ -1,5 +1,5 @@
 /**
- * Laki Hub — Front-end navigation
+ * Edifice — Front-end navigation
  */
 (function () {
   'use strict';

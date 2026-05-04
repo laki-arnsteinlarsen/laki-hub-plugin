@@ -1,12 +1,12 @@
 <?php
 defined('ABSPATH') || exit;
 
-class LakiHub_Projects {
+class Edifice_Projects {
 
     public static function get_all(array $args = []): array {
         global $wpdb;
-        $tp = $wpdb->prefix . 'laki_projects';
-        $tc = $wpdb->prefix . 'laki_contacts';
+        $tp = $wpdb->prefix . 'edifice_projects';
+        $tc = $wpdb->prefix . 'edifice_contacts';
         $where = 'WHERE 1=1';
         if (!empty($args['status'])) $where .= $wpdb->prepare(' AND p.status = %s', $args['status']);
         return $wpdb->get_results(
@@ -19,13 +19,13 @@ class LakiHub_Projects {
 
     public static function get(int $id): ?array {
         global $wpdb;
-        $t = $wpdb->prefix . 'laki_projects';
+        $t = $wpdb->prefix . 'edifice_projects';
         return $wpdb->get_row($wpdb->prepare("SELECT * FROM $t WHERE id = %d", $id), ARRAY_A) ?: null;
     }
 
     public static function save(array $data): int|false {
         global $wpdb;
-        $t = $wpdb->prefix . 'laki_projects';
+        $t = $wpdb->prefix . 'edifice_projects';
         $fields = [
             'contact_id'  => !empty($data['contact_id']) ? (int)$data['contact_id'] : null,
             'name'        => sanitize_text_field($data['name'] ?? ''),
@@ -45,17 +45,17 @@ class LakiHub_Projects {
 
     public static function delete(int $id): bool {
         global $wpdb;
-        return (bool)$wpdb->delete($wpdb->prefix . 'laki_projects', ['id' => $id]);
+        return (bool)$wpdb->delete($wpdb->prefix . 'edifice_projects', ['id' => $id]);
     }
 
     public static function ajax_save() {
-        check_ajax_referer('laki_hub_nonce', 'nonce');
+        check_ajax_referer('edifice_nonce', 'nonce');
         $id = self::save($_POST);
         $id ? wp_send_json_success(['id' => $id]) : wp_send_json_error();
     }
 
     public static function ajax_delete() {
-        check_ajax_referer('laki_hub_nonce', 'nonce');
+        check_ajax_referer('edifice_nonce', 'nonce');
         self::delete((int)($_POST['id'] ?? 0)) ? wp_send_json_success() : wp_send_json_error();
     }
 }

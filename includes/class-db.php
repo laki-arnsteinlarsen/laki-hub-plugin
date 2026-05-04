@@ -1,24 +1,22 @@
 <?php
 defined('ABSPATH') || exit;
 
-class LakiHub_DB {
+class Edifice_DB {
 
     public static function install() {
         global $wpdb;
         $c = $wpdb->get_charset_collate();
-
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        // CRM — kontakter (selskaper og personer)
-        dbDelta("CREATE TABLE {$wpdb->prefix}laki_contacts (
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_contacts (
             id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            type        ENUM('company','person') NOT NULL DEFAULT 'company',
+            type        VARCHAR(50)  NOT NULL DEFAULT 'company',
             name        VARCHAR(255) NOT NULL,
             org_nr      VARCHAR(20)  DEFAULT NULL,
             email       VARCHAR(255) DEFAULT NULL,
             phone       VARCHAR(50)  DEFAULT NULL,
             address     VARCHAR(500) DEFAULT NULL,
-            category    VARCHAR(100) DEFAULT NULL,
+            category    TEXT         DEFAULT NULL,
             status      ENUM('lead','active','inactive') NOT NULL DEFAULT 'active',
             brreg_data  LONGTEXT     DEFAULT NULL,
             notes       LONGTEXT     DEFAULT NULL,
@@ -26,8 +24,7 @@ class LakiHub_DB {
             updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) $c;");
 
-        // Prosjekter
-        dbDelta("CREATE TABLE {$wpdb->prefix}laki_projects (
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_projects (
             id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             contact_id  BIGINT UNSIGNED DEFAULT NULL,
             name        VARCHAR(255) NOT NULL,
@@ -40,8 +37,7 @@ class LakiHub_DB {
             updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) $c;");
 
-        // Timeføring
-        dbDelta("CREATE TABLE {$wpdb->prefix}laki_time_entries (
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_time_entries (
             id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             project_id  BIGINT UNSIGNED DEFAULT NULL,
             contact_id  BIGINT UNSIGNED DEFAULT NULL,
@@ -53,8 +49,7 @@ class LakiHub_DB {
             created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) $c;");
 
-        // Inntekter / fakturaer
-        dbDelta("CREATE TABLE {$wpdb->prefix}laki_revenue (
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_revenue (
             id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             contact_id  BIGINT UNSIGNED DEFAULT NULL,
             project_id  BIGINT UNSIGNED DEFAULT NULL,
@@ -69,6 +64,47 @@ class LakiHub_DB {
             created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) $c;");
 
-        update_option('laki_hub_db_version', LAKI_HUB_VERSION);
+        update_option('edifice_db_version', EDIFICE_VERSION);
+    }
+
+    public static function maybe_migrate() {
+        global $wpdb;
+
+        // ── Migration 1: Rename laki_ tables → edifice_ (one-time rename) ──────
+        $table_map = [
+            'laki_contacts'    => 'edifice_contacts',
+            'laki_projects'    => 'edifice_projects',
+            'laki_time_entries'=> 'edifice_time_entries',
+            'laki_revenue'     => 'edifice_revenue',
+        ];
+        foreach ($table_map as $old_suffix => $new_suffix) {
+            $old = $wpdb->prefix . $old_suffix;
+            $new = $wpdb->prefix . $new_suffix;
+            $old_exists = $wpdb->get_var("SHOW TABLES LIKE '$old'");
+            $new_exists = $wpdb->get_var("SHOW TABLES LIKE '$new'");
+            if ($old_exists && !$new_exists) {
+                $wpdb->query("RENAME TABLE `$old` TO `$new`");
+            }
+        }
+
+        $table = $wpdb->prefix . 'edifice_contacts';
+
+        $cols = $wpdb->get_results($wpdb->prepare(
+            "SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s",
+            DB_NAME, $table
+        ), OBJECT_K);
+
+        if (empty($cols)) return;
+
+        // ── Migration 2: type ENUM → VARCHAR(50) ────────────────────────────────
+        if (isset($cols['type']) && stripos($cols['type']->COLUMN_TYPE, 'enum') !== false) {
+            $wpdb->query("ALTER TABLE `$table` MODIFY `type` VARCHAR(50) NOT NULL DEFAULT 'company'");
+        }
+
+        // ── Migration 3: category VARCHAR → TEXT (JSON array) ───────────────────
+        if (isset($cols['category']) && stripos($cols['category']->COLUMN_TYPE, 'varchar') !== false) {
+            $wpdb->query("ALTER TABLE `$table` MODIFY `category` TEXT DEFAULT NULL");
+        }
     }
 }
