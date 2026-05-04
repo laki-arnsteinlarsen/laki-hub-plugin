@@ -40,23 +40,41 @@ jobs:
             # Copy zip into container
             docker cp /tmp/edifice.zip $CONTAINER:/tmp/edifice.zip
 
-            # Remove old plugin folders, create fresh edifice folder, extract zip
+            # Remove old folders, extract zip using PHP ZipArchive (no unzip needed)
             docker exec $CONTAINER bash -c "
-              rm -rf $PLUGINS/laki-hub
-              rm -rf $PLUGINS/edifice
+              rm -rf $PLUGINS/laki-hub $PLUGINS/edifice
               mkdir -p $PLUGINS/edifice
-              cd $PLUGINS/edifice && unzip -o /tmp/edifice.zip
-              rm /tmp/edifice.zip
+              php -r \"
+                \\\$z = new ZipArchive();
+                \\\$z->open('/tmp/edifice.zip');
+                \\\$z->extractTo('$PLUGINS/edifice');
+                \\\$z->close();
+                echo 'Extracted OK\n';
+              \"
             "
 
-            # Activate plugin via WP-CLI
+            # Find WP-CLI and activate plugin
             docker exec $CONTAINER bash -c "
-              cd /var/www/html
-              php wp-cli.phar --allow-root plugin activate edifice
-              echo '=== Active plugins ==='
-              php wp-cli.phar --allow-root plugin list --status=active
+              WPCLI=\$(find /var/www/html -name 'wp-cli.phar' 2>/dev/null | head -1)
+              if [ -n \"\$WPCLI\" ]; then
+                cd /var/www/html
+                php \$WPCLI --allow-root plugin activate edifice && echo 'Plugin activated via WP-CLI'
+              else
+                echo 'WP-CLI not found, activating via MySQL...'
+                # Get current active_plugins, add edifice/edifice.php
+                mysql -u\$WORDPRESS_DB_USER -p\$WORDPRESS_DB_PASSWORD -h\$WORDPRESS_DB_HOST \$WORDPRESS_DB_NAME -e \"
+                  UPDATE wp_options SET option_value = REPLACE(
+                    REPLACE(option_value, 'laki-hub/laki-hub.php', 'edifice/edifice.php'),
+                    's:26:\\\"laki-hub/laki-hub.php\\\"',
+                    's:22:\\\"edifice/edifice.php\\\"'
+                  ) WHERE option_name = 'active_plugins';
+                \" && echo 'active_plugins updated via MySQL'
+              fi
+              echo '=== Active plugins in DB ==='
+              mysql -u\$WORDPRESS_DB_USER -p\$WORDPRESS_DB_PASSWORD -h\$WORDPRESS_DB_HOST \$WORDPRESS_DB_NAME -se 'SELECT option_value FROM wp_options WHERE option_name=\"active_plugins\";'
             "
 
             rm -f /tmp/edifice.zip
+            docker exec $CONTAINER rm -f /tmp/edifice.zip
             echo "✅ Edifice deployet OK"
           EOF
