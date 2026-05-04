@@ -83,21 +83,40 @@ class Edifice_DB {
             }
         }
 
-        // ── Migration 1: Rename laki_ tables → edifice_ (one-time rename) ──────
+        // ── Migration 1: Rename laki_ tables → edifice_ ─────────────────────────
+        // Three cases handled:
+        //   a) Old exists, new does not         → simple RENAME TABLE (no data loss)
+        //   b) Both exist, new is empty         → copy rows from old to new, drop old
+        //   c) Only new exists (already done)   → skip
         $table_map = [
-            'laki_contacts'    => 'edifice_contacts',
-            'laki_projects'    => 'edifice_projects',
-            'laki_time_entries'=> 'edifice_time_entries',
-            'laki_revenue'     => 'edifice_revenue',
+            'laki_contacts'     => 'edifice_contacts',
+            'laki_projects'     => 'edifice_projects',
+            'laki_time_entries' => 'edifice_time_entries',
+            'laki_revenue'      => 'edifice_revenue',
         ];
         foreach ($table_map as $old_suffix => $new_suffix) {
             $old = $wpdb->prefix . $old_suffix;
             $new = $wpdb->prefix . $new_suffix;
-            $old_exists = $wpdb->get_var("SHOW TABLES LIKE '$old'");
-            $new_exists = $wpdb->get_var("SHOW TABLES LIKE '$new'");
-            if ($old_exists && !$new_exists) {
+            $old_exists = $wpdb->get_var("SHOW TABLES LIKE '$old'") === $old;
+            $new_exists = $wpdb->get_var("SHOW TABLES LIKE '$new'") === $new;
+
+            if ($old_exists && ! $new_exists) {
+                // (a) Clean rename — new table never existed
                 $wpdb->query("RENAME TABLE `$old` TO `$new`");
+
+            } elseif ($old_exists && $new_exists) {
+                // (b) Both exist (install() ran before migrate) — copy if new is empty
+                $old_rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$old`");
+                $new_rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$new`");
+                if ($old_rows > 0 && $new_rows === 0) {
+                    $wpdb->query("INSERT INTO `$new` SELECT * FROM `$old`");
+                }
+                // Drop the old table regardless (data is in new or was already empty)
+                if ($old_rows === 0 || $new_rows === 0) {
+                    $wpdb->query("DROP TABLE IF EXISTS `$old`");
+                }
             }
+            // (c) Only new exists → nothing to do
         }
 
         $table = $wpdb->prefix . 'edifice_contacts';
