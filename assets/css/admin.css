@@ -1,0 +1,335 @@
+/* ─── Laki Hub — Admin CSS ─────────────────────────────────────────────────── */
+
+:root {
+  --lh-bg:        #f0f2f5;
+  --lh-surface:   #ffffff;
+  --lh-border:    #e2e8f0;
+  --lh-accent:    #1a56db;
+  --lh-accent-lt: #ebf0ff;
+  --lh-text:      #1e293b;
+  --lh-muted:     #64748b;
+  --lh-green:     #16a34a;
+  --lh-yellow:    #ca8a04;
+  --lh-red:       #dc2626;
+  --lh-radius:    10px;
+  --lh-shadow:    0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+}
+
+/* Page wrapper */
+.lh-wrap {
+  max-width: 1400px;
+  padding: 24px 24px 48px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--lh-text);
+  background: var(--lh-bg);
+  min-height: 100vh;
+}
+
+/* Header */
+.lh-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.lh-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--lh-text);
+  letter-spacing: -.3px;
+}
+.lh-header .lh-subtitle {
+  font-size: 13px;
+  color: var(--lh-muted);
+  margin-top: 2px;
+}
+
+/* Stat cards row */
+.lh-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.lh-stat {
+  background: var(--lh-surface);
+  border: 1px solid var(--lh-border);
+  border-radius: var(--lh-radius);
+  padding: 20px 24px;
+  box-shadow: var(--lh-shadow);
+}
+.lh-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--lh-muted);
+  margin-bottom: 6px;
+}
+.lh-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--lh-text);
+  line-height: 1;
+}
+.lh-stat-value.green { color: var(--lh-green); }
+.lh-stat-value.yellow { color: var(--lh-yellow); }
+.lh-stat-value.red { color: var(--lh-red); }
+.lh-stat-sub {
+  font-size: 12px;
+  color: var(--lh-muted);
+  margin-top: 4px;
+}
+
+/* Cards */
+.lh-card {
+  background: var(--lh-surface);
+  border: 1px solid var(--lh-border);
+  border-radius: var(--lh-radius);
+  box-shadow: var(--lh-shadow);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.lh-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--lh-border);
+  background: #fafbfc;
+}
+.lh-card-head h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--lh-text);
+}
+.lh-card-body { padding: 20px; }
+
+/* Buttons */
+.lh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  border: none;
+  transition: background .15s, transform .1s;
+  text-decoration: none;
+}
+.lh-btn:active { transform: scale(.97); }
+.lh-btn-primary { background: var(--lh-accent); color: #fff; }
+.lh-btn-primary:hover { background: #1648c0; color: #fff; }
+.lh-btn-secondary { background: var(--lh-border); color: var(--lh-text); }
+.lh-btn-secondary:hover { background: #d1d5db; color: var(--lh-text); }
+.lh-btn-danger { background: #fee2e2; color: var(--lh-red); }
+.lh-btn-danger:hover { background: #fecaca; }
+.lh-btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* Table */
+.lh-table-wrap { overflow-x: auto; }
+.lh-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.lh-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--lh-muted);
+  border-bottom: 1px solid var(--lh-border);
+  white-space: nowrap;
+}
+.lh-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.lh-table tr:last-child td { border-bottom: none; }
+.lh-table tr:hover td { background: #f8fafc; }
+.lh-table .actions { white-space: nowrap; text-align: right; }
+
+/* Badges */
+.lh-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.lh-badge-green  { background: #dcfce7; color: #15803d; }
+.lh-badge-blue   { background: var(--lh-accent-lt); color: var(--lh-accent); }
+.lh-badge-yellow { background: #fef9c3; color: #854d0e; }
+.lh-badge-red    { background: #fee2e2; color: var(--lh-red); }
+.lh-badge-gray   { background: #f1f5f9; color: var(--lh-muted); }
+
+/* Form / Modal */
+.lh-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+}
+.lh-modal-overlay.open { display: flex; }
+.lh-modal {
+  background: var(--lh-surface);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  width: 560px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.lh-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--lh-border);
+}
+.lh-modal-head h3 { font-size: 16px; font-weight: 700; margin: 0; }
+.lh-modal-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--lh-muted);
+  line-height: 1;
+  padding: 0;
+}
+.lh-modal-body { padding: 20px 24px 24px; }
+.lh-modal-foot {
+  padding: 16px 24px;
+  border-top: 1px solid var(--lh-border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Form elements */
+.lh-form-row { margin-bottom: 16px; }
+.lh-form-row label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lh-muted);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.lh-form-row input[type="text"],
+.lh-form-row input[type="email"],
+.lh-form-row input[type="number"],
+.lh-form-row input[type="date"],
+.lh-form-row select,
+.lh-form-row textarea {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 14px;
+  border: 1.5px solid var(--lh-border);
+  border-radius: 7px;
+  box-sizing: border-box;
+  color: var(--lh-text);
+  background: #fff;
+  transition: border-color .15s;
+}
+.lh-form-row input:focus,
+.lh-form-row select:focus,
+.lh-form-row textarea:focus {
+  outline: none;
+  border-color: var(--lh-accent);
+  box-shadow: 0 0 0 3px rgba(26,86,219,.1);
+}
+.lh-form-row textarea { min-height: 80px; resize: vertical; }
+.lh-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* Search bar */
+.lh-search {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+.lh-search input {
+  flex: 1;
+  padding: 9px 14px;
+  border: 1.5px solid var(--lh-border);
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--lh-text);
+}
+.lh-search input:focus { outline: none; border-color: var(--lh-accent); }
+
+/* Brreg lookup */
+.lh-brreg-results {
+  border: 1px solid var(--lh-border);
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  margin-top: 6px;
+}
+.lh-brreg-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+}
+.lh-brreg-item:last-child { border-bottom: none; }
+.lh-brreg-item:hover { background: var(--lh-accent-lt); }
+.lh-brreg-item strong { display: block; font-weight: 600; }
+.lh-brreg-item span { color: var(--lh-muted); font-size: 12px; }
+
+/* Dashboard grid */
+.lh-dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) { .lh-dash-grid { grid-template-columns: 1fr; } }
+
+/* Empty state */
+.lh-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--lh-muted);
+}
+.lh-empty svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: .4; }
+.lh-empty p { font-size: 14px; margin: 0; }
+
+/* Toast */
+.lh-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1e293b;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 999999;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all .25s;
+  pointer-events: none;
+}
+.lh-toast.show { opacity: 1; transform: translateY(0); }
+.lh-toast.success { background: var(--lh-green); }
+.lh-toast.error { background: var(--lh-red); }
+
+/* Amount formatting */
+.amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+.amount-pos { color: var(--lh-green); }
+.amount-neg { color: var(--lh-red); }

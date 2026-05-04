@@ -1,0 +1,60 @@
+name: Deploy Laki Hub Plugin
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Zip plugin
+        run: |
+          zip -r laki-hub.zip . \
+            --exclude "*.git*" \
+            --exclude ".github/*" \
+            --exclude "*.md" \
+            --exclude "*.command"
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 178.105.42.193 >> ~/.ssh/known_hosts
+
+      - name: Upload zip to server
+        run: |
+          scp -i ~/.ssh/id_ed25519 laki-hub.zip arnstein@178.105.42.193:/tmp/laki-hub.zip
+
+      - name: Copy into container & install via WP-CLI
+        run: |
+          ssh -i ~/.ssh/id_ed25519 arnstein@178.105.42.193 << 'EOF'
+            CONTAINER="wordpress-l78r6g3o96gmke1f64raie3e"
+
+            # Kopier zip inn i containeren
+            docker cp /tmp/laki-hub.zip $CONTAINER:/tmp/laki-hub.zip
+
+            # Deaktiver og slett gammel versjon (ignorer feil hvis ikke finnes)
+            docker exec $CONTAINER bash -c '
+              cd /var/www/html
+              php wp-cli.phar --allow-root plugin deactivate laki-hub 2>/dev/null || true
+              php wp-cli.phar --allow-root plugin delete laki-hub 2>/dev/null || true
+            '
+
+            # Installer og aktiver ny versjon
+            docker exec $CONTAINER bash -c '
+              cd /var/www/html
+              php wp-cli.phar --allow-root plugin install /tmp/laki-hub.zip --activate --force
+            '
+
+            # Rydd opp
+            rm -f /tmp/laki-hub.zip
+            docker exec $CONTAINER rm -f /tmp/laki-hub.zip
+
+            echo "✅ Laki Hub deployet OK"
+          EOF
