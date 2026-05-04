@@ -31,32 +31,32 @@ jobs:
         run: |
           scp -i ~/.ssh/id_ed25519 edifice.zip arnstein@178.105.42.193:/tmp/edifice.zip
 
-      - name: Copy into container & install via WP-CLI
+      - name: Deploy directly into plugin folder
         run: |
           ssh -i ~/.ssh/id_ed25519 arnstein@178.105.42.193 << 'EOF'
             CONTAINER="wordpress-l78r6g3o96gmke1f64raie3e"
+            PLUGINS="/var/www/html/wp-content/plugins"
 
-            # Kopier zip inn i containeren
+            # Copy zip into container
             docker cp /tmp/edifice.zip $CONTAINER:/tmp/edifice.zip
 
-            # Deaktiver og slett gammel versjon (begge navn, ignorer feil)
-            docker exec $CONTAINER bash -c '
-              cd /var/www/html
-              php wp-cli.phar --allow-root plugin deactivate laki-hub 2>/dev/null || true
-              php wp-cli.phar --allow-root plugin delete laki-hub 2>/dev/null || true
-              php wp-cli.phar --allow-root plugin deactivate edifice 2>/dev/null || true
-              php wp-cli.phar --allow-root plugin delete edifice 2>/dev/null || true
-            '
+            # Remove old plugin folders, create fresh edifice folder, extract zip
+            docker exec $CONTAINER bash -c "
+              rm -rf $PLUGINS/laki-hub
+              rm -rf $PLUGINS/edifice
+              mkdir -p $PLUGINS/edifice
+              cd $PLUGINS/edifice && unzip -o /tmp/edifice.zip
+              rm /tmp/edifice.zip
+            "
 
-            # Installer og aktiver ny versjon
-            docker exec $CONTAINER bash -c '
+            # Activate plugin via WP-CLI
+            docker exec $CONTAINER bash -c "
               cd /var/www/html
-              php wp-cli.phar --allow-root plugin install /tmp/edifice.zip --activate --force
-            '
+              php wp-cli.phar --allow-root plugin activate edifice
+              echo '=== Active plugins ==='
+              php wp-cli.phar --allow-root plugin list --status=active
+            "
 
-            # Rydd opp
             rm -f /tmp/edifice.zip
-            docker exec $CONTAINER rm -f /tmp/edifice.zip
-
             echo "✅ Edifice deployet OK"
           EOF
