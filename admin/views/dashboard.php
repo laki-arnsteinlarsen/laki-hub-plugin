@@ -9,7 +9,7 @@ $month    = date_i18n('F Y');
 <div class="lh-wrap">
   <div class="lh-header">
     <div>
-      <h1>🏛️ Edifice</h1>
+      <h1>🌋 Edifice</h1>
       <div class="lh-subtitle">God morgen, Arnstein · <?= esc_html($month) ?></div>
     </div>
   </div>
