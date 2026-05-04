@@ -39,9 +39,11 @@ jobs:
             # Kopier zip inn i containeren
             docker cp /tmp/edifice.zip $CONTAINER:/tmp/edifice.zip
 
-            # Deaktiver og slett gammel versjon (ignorer feil hvis ikke finnes)
+            # Deaktiver og slett gammel versjon (begge navn, ignorer feil)
             docker exec $CONTAINER bash -c '
               cd /var/www/html
+              php wp-cli.phar --allow-root plugin deactivate laki-hub 2>/dev/null || true
+              php wp-cli.phar --allow-root plugin delete laki-hub 2>/dev/null || true
               php wp-cli.phar --allow-root plugin deactivate edifice 2>/dev/null || true
               php wp-cli.phar --allow-root plugin delete edifice 2>/dev/null || true
             '
