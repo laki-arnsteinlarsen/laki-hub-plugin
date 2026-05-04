@@ -1,0 +1,47 @@
+name: Deploy Edifice Plugin
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Zip plugin
+        run: |
+          zip -r edifice.zip . \
+            --exclude "*.git*" \
+            --exclude ".github/*" \
+            --exclude "*.md" \
+            --exclude "*.command"
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 178.105.42.193 >> ~/.ssh/known_hosts
+
+      - name: Upload to server
+        run: |
+          scp -i ~/.ssh/id_ed25519 edifice.zip arnstein@178.105.42.193:/tmp/edifice.zip
+          scp -i ~/.ssh/id_ed25519 deploy/activate.php arnstein@178.105.42.193:/tmp/activate.php
+
+      - name: Deploy
+        run: |
+          ssh -i ~/.ssh/id_ed25519 arnstein@178.105.42.193 'bash -s' << 'BASH'
+            set -e
+            C="wordpress-l78r6g3o96gmke1f64raie3e"
+            P="/var/www/html/wp-content/plugins"
+            docker cp /tmp/edifice.zip $C:/tmp/edifice.zip
+            docker cp /tmp/activate.php $C:/tmp/activate.php
+            docker exec $C bash -c "rm -rf $P/laki-hub $P/edifice && mkdir -p $P/edifice && php -r '\$z=new ZipArchive();\$z->open(\"/tmp/edifice.zip\");\$z->extractTo(\"$P/edifice\");\$z->close();' && echo Extracted OK"
+            docker exec $C php /tmp/activate.php
+            rm -f /tmp/edifice.zip /tmp/activate.php
+            echo "Done"
+          BASH
