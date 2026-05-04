@@ -22,7 +22,12 @@ require_once EDIFICE_DIR . 'includes/class-revenue.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
 
-register_activation_hook(__FILE__, ['Edifice_DB', 'install']);
+register_activation_hook(__FILE__, function () {
+    // Always migrate (rename old tables) before install so dbDelta
+    // never creates empty new tables that shadow existing data.
+    Edifice_DB::maybe_migrate();
+    Edifice_DB::install();
+});
 
 add_action('plugins_loaded', function () {
     Edifice_DB::maybe_migrate();
