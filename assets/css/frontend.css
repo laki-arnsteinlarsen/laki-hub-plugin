@@ -29,6 +29,7 @@ body.lh-app {
 }
 
 .lh-sidebar-logo {
+  color: #fff;
   padding: 22px 20px 18px;
   font-size: 17px;
   font-weight: 700;
@@ -38,6 +39,11 @@ body.lh-app {
   align-items: center;
   gap: 8px;
 }
+.lh-logo-icon {
+  font-size: 20px;
+  filter: brightness(1.5) drop-shadow(0 0 5px rgba(255,140,30,0.6));
+}
+
 
 .lh-nav {
   list-style: none;
@@ -121,7 +127,8 @@ body.lh-app {
   .lh-nav      { display: flex; flex-direction: row; padding: 0; }
   .lh-nav li   { padding: 6px 4px; }
   .lh-nav-link { padding: 6px 10px; font-size: 12px; }
-  .lh-sidebar-logo { padding: 12px 16px; flex: 1; }
+  .lh-sidebar-logo {
+  color: #fff; padding: 12px 16px; flex: 1; }
   .lh-sidebar-footer { padding: 8px 12px; }
   .lh-main { height: calc(100vh - 100px); }
 }
