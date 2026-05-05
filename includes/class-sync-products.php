@@ -302,4 +302,114 @@ class Edifice_Sync_Products {
 
         wp_send_json_success(['listings' => $rows ?: []]);
     }
+
+    // ── Auto-register PromptBase listing ──────────────────────────────────────
+
+    /**
+     * Called by the Cowork scheduled task (via JS fetch from Edifice page)
+     * when a PromptBase skill/prompt is detected as approved.
+     *
+     * POST fields:
+     *   nonce, queue_id, title, platform, product_type,
+     *   listing_url, price, listing_status
+     *
+     * Logic:
+     *   1. Find or create edifice_products row (match on name).
+     *   2. Find or create edifice_product_listings row (match on platform + listing_url).
+     *   3. Return listing_id so the caller can store it in promptbase-queue.json.
+     */
+    public static function ajax_register_promptbase_product(): void {
+        check_ajax_referer('edifice_nonce', 'nonce');
+        if (! current_user_can('manage_options')) wp_die(-1);
+
+        global $wpdb;
+        $tp = $wpdb->prefix . 'edifice_products';
+        $tl = $wpdb->prefix . 'edifice_product_listings';
+
+        $queue_id       = sanitize_text_field($_POST['queue_id']       ?? '');
+        $title          = sanitize_text_field($_POST['title']          ?? '');
+        $platform       = sanitize_text_field($_POST['platform']       ?? 'PromptBase');
+        $product_type   = sanitize_text_field($_POST['product_type']   ?? 'prompt');
+        $listing_url    = esc_url_raw($_POST['listing_url']            ?? '');
+        $price          = (float) ($_POST['price']                     ?? 0);
+        $listing_status = sanitize_text_field($_POST['listing_status'] ?? 'pending_review');
+
+        if (! $title) {
+            wp_send_json_error(['message' => 'title mangler']);
+            return;
+        }
+
+        // 1. Find or create product
+        $product_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM `$tp` WHERE name = %s LIMIT 1",
+            $title
+        ));
+
+        if (! $product_id) {
+            $wpdb->insert($tp, [
+                'name'        => $title,
+                'type'        => $product_type,   // e.g. 'Agent Skill', 'Prompt'
+                'brand'       => 'StrategistKit',
+                'status'      => 'active',
+                'description' => 'Auto-registrert fra PromptBase (' . $queue_id . ')',
+            ]);
+            $product_id = (int) $wpdb->insert_id;
+        }
+
+        if (! $product_id) {
+            wp_send_json_error(['message' => 'Klarte ikke opprette produkt']);
+            return;
+        }
+
+        // 2. Find or create listing (match on platform + listing_url OR platform + product_id)
+        $listing_id = null;
+
+        if ($listing_url) {
+            $listing_id = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM `$tl` WHERE platform = %s AND listing_url = %s LIMIT 1",
+                $platform, $listing_url
+            ));
+        }
+
+        if (! $listing_id) {
+            // Fall back: same product on same platform
+            $listing_id = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM `$tl` WHERE platform = %s AND product_id = %d LIMIT 1",
+                $platform, $product_id
+            ));
+        }
+
+        if ($listing_id) {
+            // Update status and URL if they have changed
+            $wpdb->update($tl, [
+                'listing_url'    => $listing_url    ?: $listing_url,
+                'listing_status' => $listing_status,
+                'price'          => $price,
+            ], ['id' => $listing_id]);
+        } else {
+            $wpdb->insert($tl, [
+                'product_id'     => $product_id,
+                'platform'       => $platform,
+                'listing_url'    => $listing_url,
+                'price'          => $price,
+                'currency'       => 'USD',
+                'listing_status' => $listing_status,
+                'notes'          => 'Auto-registrert fra queue_id=' . $queue_id,
+            ]);
+            $listing_id = (int) $wpdb->insert_id;
+        }
+
+        if (! $listing_id) {
+            wp_send_json_error(['message' => 'Klarte ikke opprette listing']);
+            return;
+        }
+
+        wp_send_json_success([
+            'product_id' => $product_id,
+            'listing_id' => $listing_id,
+            'message'    => "Registrert: $title på $platform (listing #$listing_id)",
+        ]);
+    }
+
 }
+ // ← last line is closing brace of ajax_get_listings_for_sync, handled by sed below

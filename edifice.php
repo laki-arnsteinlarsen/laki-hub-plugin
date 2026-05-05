@@ -74,3 +74,4 @@ add_action('wp_ajax_edifice_sync_get_listings',      ['Edifice_Sync_Products', '
 // AJAX handlers — Gumroad OAuth
 add_action('wp_ajax_edifice_sync_get_oauth_url',   ['Edifice_Sync_Products', 'ajax_get_oauth_url']);
 add_action('wp_ajax_edifice_sync_disconnect',       ['Edifice_Sync_Products', 'ajax_disconnect_gumroad']);
+add_action('wp_ajax_edifice_register_promptbase',    ['Edifice_Sync_Products', 'ajax_register_promptbase_product']);
