@@ -100,6 +100,13 @@ class Edifice_Frontend {
   <title>Edifice</title>
   <link rel="stylesheet" href="<?= esc_url($plugin_url) ?>assets/css/admin.css">
   <link rel="stylesheet" href="<?= esc_url($plugin_url) ?>assets/css/frontend.css">
+  <script src="<?= includes_url('js/jquery/jquery.min.js') ?>"></script>
+  <script>
+    var Edifice = {
+      ajax_url: '<?= esc_js($ajax_url) ?>',
+      nonce:    '<?= esc_js($nonce) ?>'
+    };
+  </script>
 </head>
 <body class="lh-app">
 
@@ -149,13 +156,6 @@ class Edifice_Frontend {
 
   </main>
 
-  <script src="<?= includes_url('js/jquery/jquery.min.js') ?>"></script>
-  <script>
-    var Edifice = {
-      ajax_url: '<?= esc_js($ajax_url) ?>',
-      nonce:    '<?= esc_js($nonce) ?>'
-    };
-  </script>
   <script src="<?= esc_url($plugin_url) ?>assets/js/admin.js"></script>
   <script src="<?= esc_url($plugin_url) ?>assets/js/frontend.js"></script>
 
