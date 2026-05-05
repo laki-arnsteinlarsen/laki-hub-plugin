@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.0.0'); // deployed 2026-05-05T12:54Z
+define('EDIFICE_VERSION', '1.0.1'); // deployed 2026-05-05T12:54Z
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -59,3 +59,4 @@ add_action('wp_ajax_edifice_listing_save',           ['Edifice_Products_Digital'
 add_action('wp_ajax_edifice_listing_delete',         ['Edifice_Products_Digital', 'ajax_delete_listing']);
 add_action('wp_ajax_edifice_product_revenue_save',   ['Edifice_Products_Digital', 'ajax_save_revenue']);
 add_action('wp_ajax_edifice_product_revenue_delete', ['Edifice_Products_Digital', 'ajax_delete_revenue']);
+add_action('wp_ajax_edifice_listings_for_product',   ['Edifice_Products_Digital', 'ajax_listings_for_product']);

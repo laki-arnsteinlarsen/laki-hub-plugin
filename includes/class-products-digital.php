@@ -290,4 +290,36 @@ class Edifice_Products_Digital {
         self::delete_revenue((int) ($_POST['id'] ?? 0));
         wp_send_json_success();
     }
+
+    public static function ajax_listings_for_product(): void {
+        check_ajax_referer('edifice_nonce', 'nonce');
+        if (! current_user_can('manage_options')) wp_die(-1);
+
+        $pid = (int) ($_POST['pid'] ?? 0);
+        if ($pid <= 0) {
+            wp_send_json_error(['message' => 'Invalid product id']);
+            return;
+        }
+
+        $product  = self::get_product($pid);
+        $listings = self::get_listings_for_product($pid);
+
+        // Include revenue snapshots per listing
+        global $wpdb;
+        $tr = $wpdb->prefix . 'edifice_product_revenue';
+        foreach ($listings as &$l) {
+            $lid = (int) $l['id'];
+            $l['snapshots'] = $wpdb->get_results($wpdb->prepare(
+                "SELECT snapshot_date, revenue, sales_count, currency, notes
+                 FROM `$tr` WHERE listing_id = %d ORDER BY snapshot_date DESC LIMIT 10",
+                $lid
+            ), ARRAY_A) ?: [];
+        }
+        unset($l);
+
+        wp_send_json_success([
+            'product'  => $product,
+            'listings' => $listings,
+        ]);
+    }
 }
