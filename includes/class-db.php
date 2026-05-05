@@ -64,8 +64,6 @@ class Edifice_DB {
             created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) $c;");
 
-        // ── Digital products / passive income ─────────────────────────────────
-
         dbDelta("CREATE TABLE {$wpdb->prefix}edifice_products (
             id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             name        VARCHAR(255) NOT NULL,
@@ -149,24 +147,68 @@ class Edifice_DB {
             }
         }
 
-        $table = $wpdb->prefix . 'edifice_contacts';
-
+        $contact_table = $wpdb->prefix . 'edifice_contacts';
         $cols = $wpdb->get_results($wpdb->prepare(
             "SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS
              WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s",
-            DB_NAME, $table
+            DB_NAME, $contact_table
         ), OBJECT_K);
 
-        if (empty($cols)) return;
+        if (! empty($cols)) {
+            // ── Migration 2: type ENUM → VARCHAR(50) ────────────────────────────
+            if (isset($cols['type']) && stripos($cols['type']->COLUMN_TYPE, 'enum') !== false) {
+                $wpdb->query("ALTER TABLE `$contact_table` MODIFY `type` VARCHAR(50) NOT NULL DEFAULT 'company'");
+            }
 
-        // ── Migration 2: type ENUM → VARCHAR(50) ────────────────────────────────
-        if (isset($cols['type']) && stripos($cols['type']->COLUMN_TYPE, 'enum') !== false) {
-            $wpdb->query("ALTER TABLE `$table` MODIFY `type` VARCHAR(50) NOT NULL DEFAULT 'company'");
+            // ── Migration 3: category VARCHAR → TEXT ────────────────────────────
+            if (isset($cols['category']) && stripos($cols['category']->COLUMN_TYPE, 'varchar') !== false) {
+                $wpdb->query("ALTER TABLE `$contact_table` MODIFY `category` TEXT DEFAULT NULL");
+            }
         }
 
-        // ── Migration 3: category VARCHAR → TEXT (JSON array) ───────────────────
-        if (isset($cols['category']) && stripos($cols['category']->COLUMN_TYPE, 'varchar') !== false) {
-            $wpdb->query("ALTER TABLE `$table` MODIFY `category` TEXT DEFAULT NULL");
+        // ── Migration 4: Create product tables if missing (Produkter module) ────
+        // dbDelta is safe to run repeatedly — it only creates/alters, never drops.
+        $products_table = $wpdb->prefix . 'edifice_products';
+        if ($wpdb->get_var("SHOW TABLES LIKE '$products_table'") !== $products_table) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            $c = $wpdb->get_charset_collate();
+
+            dbDelta("CREATE TABLE {$wpdb->prefix}edifice_products (
+                id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name        VARCHAR(255) NOT NULL,
+                type        VARCHAR(50)  NOT NULL DEFAULT 'ebook',
+                brand       VARCHAR(100) NOT NULL DEFAULT 'LAKI',
+                status      VARCHAR(20)  NOT NULL DEFAULT 'active',
+                description LONGTEXT     DEFAULT NULL,
+                created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) $c;");
+
+            dbDelta("CREATE TABLE {$wpdb->prefix}edifice_product_listings (
+                id             BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                product_id     BIGINT UNSIGNED NOT NULL,
+                platform       VARCHAR(50)  NOT NULL DEFAULT 'Gumroad',
+                listing_url    VARCHAR(500) DEFAULT NULL,
+                price          DECIMAL(10,2) NOT NULL DEFAULT 0,
+                currency       VARCHAR(3)   NOT NULL DEFAULT 'USD',
+                listing_status VARCHAR(30)  NOT NULL DEFAULT 'live',
+                notes          LONGTEXT     DEFAULT NULL,
+                created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) $c;");
+
+            dbDelta("CREATE TABLE {$wpdb->prefix}edifice_product_revenue (
+                id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                listing_id    BIGINT UNSIGNED NOT NULL,
+                snapshot_date DATE         NOT NULL,
+                revenue       DECIMAL(12,2) NOT NULL DEFAULT 0,
+                sales_count   INT UNSIGNED  NOT NULL DEFAULT 0,
+                currency      VARCHAR(3)   NOT NULL DEFAULT 'USD',
+                notes         LONGTEXT     DEFAULT NULL,
+                synced_at     DATETIME     DEFAULT NULL,
+                created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_listing_date (listing_id, snapshot_date)
+            ) $c;");
         }
     }
 }
