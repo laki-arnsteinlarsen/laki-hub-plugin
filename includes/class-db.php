@@ -64,6 +64,45 @@ class Edifice_DB {
             created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) $c;");
 
+        // ── Digital products / passive income ─────────────────────────────────
+
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_products (
+            id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            name        VARCHAR(255) NOT NULL,
+            type        VARCHAR(50)  NOT NULL DEFAULT 'ebook',
+            brand       VARCHAR(100) NOT NULL DEFAULT 'LAKI',
+            status      VARCHAR(20)  NOT NULL DEFAULT 'active',
+            description LONGTEXT     DEFAULT NULL,
+            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) $c;");
+
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_product_listings (
+            id             BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            product_id     BIGINT UNSIGNED NOT NULL,
+            platform       VARCHAR(50)  NOT NULL DEFAULT 'Gumroad',
+            listing_url    VARCHAR(500) DEFAULT NULL,
+            price          DECIMAL(10,2) NOT NULL DEFAULT 0,
+            currency       VARCHAR(3)   NOT NULL DEFAULT 'USD',
+            listing_status VARCHAR(30)  NOT NULL DEFAULT 'live',
+            notes          LONGTEXT     DEFAULT NULL,
+            created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) $c;");
+
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_product_revenue (
+            id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            listing_id    BIGINT UNSIGNED NOT NULL,
+            snapshot_date DATE         NOT NULL,
+            revenue       DECIMAL(12,2) NOT NULL DEFAULT 0,
+            sales_count   INT UNSIGNED  NOT NULL DEFAULT 0,
+            currency      VARCHAR(3)   NOT NULL DEFAULT 'USD',
+            notes         LONGTEXT     DEFAULT NULL,
+            synced_at     DATETIME     DEFAULT NULL,
+            created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_listing_date (listing_id, snapshot_date)
+        ) $c;");
+
         update_option('edifice_db_version', EDIFICE_VERSION);
     }
 
@@ -84,10 +123,6 @@ class Edifice_DB {
         }
 
         // ── Migration 1: Rename laki_ tables → edifice_ ─────────────────────────
-        // Three cases handled:
-        //   a) Old exists, new does not         → simple RENAME TABLE (no data loss)
-        //   b) Both exist, new is empty         → copy rows from old to new, drop old
-        //   c) Only new exists (already done)   → skip
         $table_map = [
             'laki_contacts'     => 'edifice_contacts',
             'laki_projects'     => 'edifice_projects',
@@ -101,22 +136,17 @@ class Edifice_DB {
             $new_exists = $wpdb->get_var("SHOW TABLES LIKE '$new'") === $new;
 
             if ($old_exists && ! $new_exists) {
-                // (a) Clean rename — new table never existed
                 $wpdb->query("RENAME TABLE `$old` TO `$new`");
-
             } elseif ($old_exists && $new_exists) {
-                // (b) Both exist (install() ran before migrate) — copy if new is empty
                 $old_rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$old`");
                 $new_rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$new`");
                 if ($old_rows > 0 && $new_rows === 0) {
                     $wpdb->query("INSERT INTO `$new` SELECT * FROM `$old`");
                 }
-                // Drop the old table regardless (data is in new or was already empty)
                 if ($old_rows === 0 || $new_rows === 0) {
                     $wpdb->query("DROP TABLE IF EXISTS `$old`");
                 }
             }
-            // (c) Only new exists → nothing to do
         }
 
         $table = $wpdb->prefix . 'edifice_contacts';
