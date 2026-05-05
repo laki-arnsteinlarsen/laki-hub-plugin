@@ -19,6 +19,7 @@ require_once EDIFICE_DIR . 'includes/class-crm.php';
 require_once EDIFICE_DIR . 'includes/class-projects.php';
 require_once EDIFICE_DIR . 'includes/class-time.php';
 require_once EDIFICE_DIR . 'includes/class-revenue.php';
+require_once EDIFICE_DIR . 'includes/class-products-digital.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
 
@@ -35,18 +36,26 @@ add_action('plugins_loaded', function () {
     Edifice_Frontend::init();
 });
 
-// AJAX handlers
-add_action('wp_ajax_edifice_brreg_lookup',    ['Edifice_Brreg', 'ajax_lookup']);
-add_action('wp_ajax_edifice_crm_save',        ['Edifice_CRM',   'ajax_save']);
-add_action('wp_ajax_edifice_crm_delete',      ['Edifice_CRM',   'ajax_delete']);
-add_action('wp_ajax_edifice_time_save',        ['Edifice_Time', 'ajax_save']);
-add_action('wp_ajax_edifice_time_delete',      ['Edifice_Time', 'ajax_delete']);
-add_action('wp_ajax_edifice_time_start',       ['Edifice_Time', 'ajax_start_timer']);
-add_action('wp_ajax_edifice_time_stop',        ['Edifice_Time', 'ajax_stop_timer']);
-add_action('wp_ajax_edifice_time_active',      ['Edifice_Time', 'ajax_active_timer']);
-add_action('wp_ajax_edifice_time_period_data', ['Edifice_Time', 'ajax_period_data']);
-add_action('wp_ajax_edifice_time_export',      ['Edifice_Time', 'ajax_export']);
+// AJAX handlers — core modules
+add_action('wp_ajax_edifice_brreg_lookup',    ['Edifice_Brreg',    'ajax_lookup']);
+add_action('wp_ajax_edifice_crm_save',        ['Edifice_CRM',      'ajax_save']);
+add_action('wp_ajax_edifice_crm_delete',      ['Edifice_CRM',      'ajax_delete']);
+add_action('wp_ajax_edifice_time_save',        ['Edifice_Time',    'ajax_save']);
+add_action('wp_ajax_edifice_time_delete',      ['Edifice_Time',    'ajax_delete']);
+add_action('wp_ajax_edifice_time_start',       ['Edifice_Time',    'ajax_start_timer']);
+add_action('wp_ajax_edifice_time_stop',        ['Edifice_Time',    'ajax_stop_timer']);
+add_action('wp_ajax_edifice_time_active',      ['Edifice_Time',    'ajax_active_timer']);
+add_action('wp_ajax_edifice_time_period_data', ['Edifice_Time',    'ajax_period_data']);
+add_action('wp_ajax_edifice_time_export',      ['Edifice_Time',    'ajax_export']);
 add_action('wp_ajax_edifice_project_save',    ['Edifice_Projects', 'ajax_save']);
 add_action('wp_ajax_edifice_project_delete',  ['Edifice_Projects', 'ajax_delete']);
-add_action('wp_ajax_edifice_revenue_save',    ['Edifice_Revenue', 'ajax_save']);
-add_action('wp_ajax_edifice_revenue_delete',  ['Edifice_Revenue', 'ajax_delete']);
+add_action('wp_ajax_edifice_revenue_save',    ['Edifice_Revenue',  'ajax_save']);
+add_action('wp_ajax_edifice_revenue_delete',  ['Edifice_Revenue',  'ajax_delete']);
+
+// AJAX handlers — digital products / passive income
+add_action('wp_ajax_edifice_product_save',          ['Edifice_Products_Digital', 'ajax_save_product']);
+add_action('wp_ajax_edifice_product_delete',         ['Edifice_Products_Digital', 'ajax_delete_product']);
+add_action('wp_ajax_edifice_listing_save',           ['Edifice_Products_Digital', 'ajax_save_listing']);
+add_action('wp_ajax_edifice_listing_delete',         ['Edifice_Products_Digital', 'ajax_delete_listing']);
+add_action('wp_ajax_edifice_product_revenue_save',   ['Edifice_Products_Digital', 'ajax_save_revenue']);
+add_action('wp_ajax_edifice_product_revenue_delete', ['Edifice_Products_Digital', 'ajax_delete_revenue']);
