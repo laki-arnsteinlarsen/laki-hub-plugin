@@ -112,6 +112,7 @@ class Edifice_Frontend {
       <li><a href="#projects"  class="lh-nav-link"        data-section="projects">🚀 Prosjekter</a></li>
       <li><a href="#time"      class="lh-nav-link"        data-section="time">⏱️ Timeføring</a></li>
       <li><a href="#revenue"   class="lh-nav-link"        data-section="revenue">💰 Inntekt</a></li>
+      <li><a href="#products"  class="lh-nav-link"        data-section="products">🛍️ Produkter</a></li>
     </ul>
     <div class="lh-sidebar-footer">
       <span class="lh-user"><?= esc_html($user->display_name) ?></span>
@@ -140,6 +141,10 @@ class Edifice_Frontend {
 
     <div class="lh-section lh-hidden" id="section-revenue">
       <?php include EDIFICE_DIR . 'admin/views/revenue.php'; ?>
+    </div>
+
+    <div class="lh-section lh-hidden" id="section-products">
+      <?php include EDIFICE_DIR . 'admin/views/products.php'; ?>
     </div>
 
   </main>
