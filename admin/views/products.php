@@ -82,14 +82,18 @@ $type_labels = [
             <span class="lh-badge lh-badge--active" style="margin-left:auto;font-size:10px">API</span>
           </div>
           <p style="font-size:12px;color:#666;margin:0 0 10px">Synker daglig kl. 06:00 UTC via Gumroad API.</p>
-          <label style="display:block;font-size:11px;font-weight:600;margin-bottom:4px;color:#555">Access Token</label>
-          <div style="display:flex;gap:6px;margin-bottom:8px">
-            <input type="password" id="gumroad-token-input" class="lh-input" placeholder="Lim inn token fra Gumroad Settings..." style="flex:1;font-size:12px;padding:6px 8px">
-            <button class="lh-btn lh-btn--secondary lh-btn--sm" id="btn-save-gumroad-token">Lagre</button>
+          <div id="gumroad-not-connected" style="display:none">
+            <button class="lh-btn lh-btn--secondary lh-btn--sm" id="btn-gumroad-connect">🔗 Koble til Gumroad</button>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <button class="lh-btn lh-btn--primary lh-btn--sm" id="btn-sync-gumroad">▶ Synk nå</button>
-            <span id="gumroad-sync-status" style="font-size:12px;color:#666"></span>
+          <div id="gumroad-connected" style="display:none">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-size:12px;color:#16a34a;font-weight:600">✅ Koblet til</span>
+              <button class="lh-btn lh-btn--ghost lh-btn--sm" id="btn-gumroad-disconnect" style="font-size:11px;color:#dc2626;border-color:#dc2626">Koble fra</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="lh-btn lh-btn--primary lh-btn--sm" id="btn-sync-gumroad">▶ Synk nå</button>
+              <span id="gumroad-sync-status" style="font-size:12px;color:#666"></span>
+            </div>
           </div>
           <div style="margin-top:6px;font-size:11px;color:#999">Sist synket: <span id="gumroad-last-sync">—</span></div>
         </div>
@@ -667,26 +671,62 @@ $type_labels = [
 
   // ── Sync panel ───────────────────────────────────────────────────────────
 
-  // Load settings on page load
-  ajax('edifice_sync_get_settings', {}, function(d) {
-    if (d.gumroad_token) $('#gumroad-token-input').val('••••••••');
-    $('#gumroad-last-sync').text(d.last_gumroad || '—');
-    $('#chrome-last-sync').text(d.last_chrome || '—');
-  });
+  // Load settings on page load + check OAuth result in URL
+  function loadSyncSettings() {
+    ajax('edifice_sync_get_settings', {}, function(d) {
+      if (d.gumroad_connected) {
+        $('#gumroad-connected').show();
+        $('#gumroad-not-connected').hide();
+      } else {
+        $('#gumroad-connected').hide();
+        $('#gumroad-not-connected').show();
+      }
+      $('#gumroad-last-sync').text(d.last_gumroad || '—');
+      $('#chrome-last-sync').text(d.last_chrome   || '—');
+    });
+  }
+  loadSyncSettings();
+
+  // Show sync panel + success/error if redirected back from Gumroad OAuth
+  var urlParams = new URLSearchParams(window.location.search);
+  var grParam   = urlParams.get('gumroad');
+  if (grParam === 'connected') {
+    $('#sync-panel').slideDown(200);
+    $('#gumroad-sync-status').text('✅ Gumroad koblet til!').css('color','#16a34a');
+    history.replaceState({}, '', location.pathname + location.hash);
+  } else if (grParam === 'error') {
+    $('#sync-panel').slideDown(200);
+    var msg = urlParams.get('msg') || 'Ukjent feil';
+    $('#gumroad-sync-status').text('❌ Feil: ' + msg).css('color','#dc2626');
+    history.replaceState({}, '', location.pathname + location.hash);
+  }
 
   $('#btn-open-sync').on('click', function() {
     $('#sync-panel').slideDown(200);
+    loadSyncSettings();
   });
   $('#btn-sync-panel-close').on('click', function() {
     $('#sync-panel').slideUp(200);
   });
 
-  $('#btn-save-gumroad-token').on('click', function() {
-    var token = $('#gumroad-token-input').val();
-    if (!token || token === '••••••••') { alert('Lim inn et gyldig token.'); return; }
-    ajax('edifice_sync_save_settings', { gumroad_token: token }, function() {
-      $('#gumroad-sync-status').text('✅ Token lagret').css('color','#16a34a');
-      setTimeout(function(){ $('#gumroad-sync-status').text(''); }, 3000);
+  // Connect Gumroad via OAuth
+  $('#btn-gumroad-connect').on('click', function() {
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('Åpner Gumroad...');
+    ajax('edifice_sync_get_oauth_url', {}, function(d) {
+      window.location.href = d.url;
+    }, function() {
+      $btn.prop('disabled', false).text('🔗 Koble til Gumroad');
+    });
+  });
+
+  // Disconnect Gumroad
+  $('#btn-gumroad-disconnect').on('click', function() {
+    if (!confirm('Koble fra Gumroad? Automatisk synk vil stoppe.')) return;
+    ajax('edifice_sync_disconnect', {}, function() {
+      $('#gumroad-connected').hide();
+      $('#gumroad-not-connected').show();
+      $('#gumroad-sync-status').text('Frakoblet.').css('color','#666');
     });
   });
 
@@ -698,7 +738,6 @@ $type_labels = [
       $btn.prop('disabled', false).text('▶ Synk nå');
       $('#gumroad-sync-status').text('✅ ' + d.message).css('color','#16a34a');
       $('#gumroad-last-sync').text(new Date().toLocaleString('no-NO'));
-      // Reload product cards to show updated revenue
       setTimeout(function(){ location.reload(); }, 1500);
     });
   });

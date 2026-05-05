@@ -5,39 +5,127 @@ defined('ABSPATH') || exit;
  * Edifice_Sync_Products
  *
  * Handles daily revenue sync from external platforms into edifice_product_revenue.
- * Gumroad: server-side API (no browser needed).
+ * Gumroad: OAuth 2.0 authorization code flow + server-side API.
  * PromptBase / KDP / Upwork: managed via Cowork scheduled task (Chrome).
  */
 class Edifice_Sync_Products {
 
-    const CRON_HOOK    = 'edifice_daily_product_sync';
-    const OPT_GR_TOKEN = 'edifice_gumroad_token';
-    const OPT_LAST_GR  = 'edifice_gumroad_last_sync';
+    const CRON_HOOK     = 'edifice_daily_product_sync';
+    const OPT_GR_TOKEN  = 'edifice_gumroad_token';
+    const OPT_LAST_GR   = 'edifice_gumroad_last_sync';
+    const OPT_GR_STATE  = 'edifice_gumroad_oauth_state';
+
+    const GR_CLIENT_ID     = 'ksZTqjTPLRU0xOVG2Ayvu1d024vHgq36TKn8272CGl0';
+    const GR_CLIENT_SECRET = 'tEeOM0OrHaZaMDHxeSUGYAqx6hlc1EbCt6EtBu3lodA';
+    const GR_REDIRECT_URI  = 'https://edifice.arnsteinlarsen.no';
 
     // ── Init ─────────────────────────────────────────────────────────────────
 
     public static function init(): void {
+        // OAuth callback: intercept ?code= on the main site (must be early)
+        add_action('init', [__CLASS__, 'maybe_handle_oauth_callback'], 5);
+
         add_action(self::CRON_HOOK, [__CLASS__, 'run_gumroad_sync']);
         if (! wp_next_scheduled(self::CRON_HOOK)) {
-            // Schedule for 06:00 UTC daily
             $first = strtotime('tomorrow 06:00 UTC');
             wp_schedule_event($first, 'daily', self::CRON_HOOK);
         }
     }
 
-    // ── Gumroad API ───────────────────────────────────────────────────────────
+    // ── OAuth callback handler ────────────────────────────────────────────────
 
     /**
-     * Fetch all Gumroad sales since last sync and upsert into revenue table.
-     * Called by WP Cron daily, or manually via AJAX.
+     * Called on WordPress `init`. If ?code= is present and state matches,
+     * exchange for a token and store it, then redirect back to Edifice.
      */
+    public static function maybe_handle_oauth_callback(): void {
+        if (! isset($_GET['code'])) {
+            return;
+        }
+        // Only handle on the Edifice frontend (not wp-admin)
+        if (is_admin()) {
+            return;
+        }
+
+        $code          = sanitize_text_field($_GET['code']);
+        $state_in      = sanitize_text_field($_GET['state'] ?? '');
+        $stored_state  = get_option(self::OPT_GR_STATE, '');
+
+        // Accept if state matches OR if no state was stored (legacy flow)
+        if ($stored_state && $state_in && $state_in !== $stored_state) {
+            wp_redirect(home_url('/#products?gumroad=error&msg=state_mismatch'));
+            exit;
+        }
+
+        // Exchange code for access token
+        $resp = wp_remote_post('https://gumroad.com/oauth/token', [
+            'timeout' => 20,
+            'body'    => [
+                'client_id'     => self::GR_CLIENT_ID,
+                'client_secret' => self::GR_CLIENT_SECRET,
+                'redirect_uri'  => self::GR_REDIRECT_URI,
+                'code'          => $code,
+                'grant_type'    => 'authorization_code',
+            ],
+        ]);
+
+        if (is_wp_error($resp)) {
+            wp_redirect(home_url('/#products?gumroad=error&msg=' . urlencode($resp->get_error_message())));
+            exit;
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($resp), true);
+
+        if (! empty($body['access_token'])) {
+            update_option(self::OPT_GR_TOKEN, sanitize_text_field($body['access_token']));
+            delete_option(self::OPT_GR_STATE);
+            wp_redirect(home_url('/#products?gumroad=connected'));
+            exit;
+        }
+
+        $err = $body['error_description'] ?? $body['error'] ?? 'ukjent feil';
+        wp_redirect(home_url('/#products?gumroad=error&msg=' . urlencode($err)));
+        exit;
+    }
+
+    // ── OAuth helpers ─────────────────────────────────────────────────────────
+
+    /** Return the Gumroad authorization URL (used by the UI "Connect" button). */
+    public static function get_oauth_url(): string {
+        $state = wp_generate_uuid4();
+        update_option(self::OPT_GR_STATE, $state);
+
+        return add_query_arg([
+            'client_id'     => self::GR_CLIENT_ID,
+            'redirect_uri'  => self::GR_REDIRECT_URI,
+            'response_type' => 'code',
+            'scope'         => 'edit_products view_sales',
+            'state'         => $state,
+        ], 'https://gumroad.com/oauth/authorize');
+    }
+
+    public static function ajax_get_oauth_url(): void {
+        check_ajax_referer('edifice_nonce', 'nonce');
+        if (! current_user_can('manage_options')) wp_die(-1);
+        wp_send_json_success(['url' => self::get_oauth_url()]);
+    }
+
+    public static function ajax_disconnect_gumroad(): void {
+        check_ajax_referer('edifice_nonce', 'nonce');
+        if (! current_user_can('manage_options')) wp_die(-1);
+        delete_option(self::OPT_GR_TOKEN);
+        delete_option(self::OPT_GR_STATE);
+        wp_send_json_success(['message' => 'Gumroad frakoblet.']);
+    }
+
+    // ── Gumroad API ───────────────────────────────────────────────────────────
+
     public static function run_gumroad_sync(): array {
         $token = get_option(self::OPT_GR_TOKEN, '');
         if (! $token) {
-            return ['ok' => false, 'message' => 'Ingen Gumroad API-nøkkel konfigurert.'];
+            return ['ok' => false, 'message' => 'Ingen Gumroad-tilkobling. Koble til Gumroad først.'];
         }
 
-        // Fetch sales from Gumroad API
         $after = get_option(self::OPT_LAST_GR, date('Y-m-d', strtotime('-90 days')));
         $url   = add_query_arg([
             'access_token' => $token,
@@ -58,12 +146,12 @@ class Edifice_Sync_Products {
         $written = 0;
         $errors  = [];
 
-        // Group sales by product_permalink + date
+        // Group by permalink + date
         $grouped = [];
         foreach ($sales as $sale) {
             $permalink = $sale['product_permalink'] ?? '';
-            $date      = substr($sale['created_at'], 0, 10); // "YYYY-MM-DD"
-            $amount    = (float) (($sale['price'] ?? 0) / 100); // pence → dollars
+            $date      = substr($sale['created_at'], 0, 10);
+            $amount    = (float) (($sale['price'] ?? 0) / 100);
             $key       = $permalink . '|' . $date;
             $grouped[$key]['permalink'] = $permalink;
             $grouped[$key]['date']      = $date;
@@ -74,7 +162,7 @@ class Edifice_Sync_Products {
         foreach ($grouped as $item) {
             $listing_id = self::find_listing_id_by_url($item['permalink'], 'Gumroad');
             if (! $listing_id) {
-                $errors[] = 'Ingen listing funnet for: ' . $item['permalink'];
+                $errors[] = 'Ingen listing: ' . $item['permalink'];
                 continue;
             }
             Edifice_Products_Digital::upsert_revenue(
@@ -88,7 +176,6 @@ class Edifice_Sync_Products {
             $written++;
         }
 
-        // Update last sync marker to yesterday (so next run picks up from there)
         update_option(self::OPT_LAST_GR, date('Y-m-d', strtotime('-1 day')));
 
         $msg = "Gumroad: {$written} dagsoppføringer skrevet.";
@@ -97,16 +184,12 @@ class Edifice_Sync_Products {
         return ['ok' => true, 'message' => $msg, 'written' => $written, 'errors' => $errors];
     }
 
-    /**
-     * Match a Gumroad permalink to an existing listing by URL substring.
-     */
     private static function find_listing_id_by_url(string $permalink, string $platform): ?int {
         global $wpdb;
         $tl = $wpdb->prefix . 'edifice_product_listings';
         $id = $wpdb->get_var($wpdb->prepare(
             "SELECT id FROM `$tl`
-             WHERE platform = %s
-               AND listing_url LIKE %s
+             WHERE platform = %s AND listing_url LIKE %s
              LIMIT 1",
             $platform,
             '%' . $wpdb->esc_like($permalink) . '%'
@@ -114,13 +197,8 @@ class Edifice_Sync_Products {
         return $id ? (int) $id : null;
     }
 
-    // ── Chrome-sync endpoint (PromptBase / KDP / Upwork) ─────────────────────
+    // ── Chrome-sync endpoints ─────────────────────────────────────────────────
 
-    /**
-     * Receive a revenue payload POSTed by the Chrome sync task.
-     * Expected POST fields: listing_id, date, revenue, sales_count, platform, notes
-     * The Cowork scheduled task reads each platform and POSTs here.
-     */
     public static function ajax_chrome_sync_revenue(): void {
         check_ajax_referer('edifice_nonce', 'nonce');
         if (! current_user_can('manage_options')) wp_die(-1);
@@ -141,10 +219,6 @@ class Edifice_Sync_Products {
         wp_send_json_success(['message' => "Lagret: listing $listing_id — $date — $revenue $currency"]);
     }
 
-    /**
-     * Batch endpoint: accept an array of revenue entries at once.
-     * POST body: entries = JSON array of {listing_id, date, revenue, sales_count, currency, notes}
-     */
     public static function ajax_chrome_sync_batch(): void {
         check_ajax_referer('edifice_nonce', 'nonce');
         if (! current_user_can('manage_options')) wp_die(-1);
@@ -181,20 +255,20 @@ class Edifice_Sync_Products {
     public static function ajax_save_settings(): void {
         check_ajax_referer('edifice_nonce', 'nonce');
         if (! current_user_can('manage_options')) wp_die(-1);
-
         $token = sanitize_text_field($_POST['gumroad_token'] ?? '');
         update_option(self::OPT_GR_TOKEN, $token);
-        wp_send_json_success(['message' => 'Innstillinger lagret.']);
+        wp_send_json_success(['message' => 'Token lagret.']);
     }
 
     public static function ajax_get_settings(): void {
         check_ajax_referer('edifice_nonce', 'nonce');
         if (! current_user_can('manage_options')) wp_die(-1);
-
+        $token = get_option(self::OPT_GR_TOKEN, '');
         wp_send_json_success([
-            'gumroad_token'   => get_option(self::OPT_GR_TOKEN, ''),
-            'last_gumroad'    => get_option(self::OPT_LAST_GR, '—'),
-            'last_chrome'     => get_option('edifice_chrome_sync_last', '—'),
+            'gumroad_connected' => ! empty($token),
+            'gumroad_token'     => $token,
+            'last_gumroad'      => get_option(self::OPT_LAST_GR, '—'),
+            'last_chrome'       => get_option('edifice_chrome_sync_last', '—'),
         ]);
     }
 
@@ -209,9 +283,6 @@ class Edifice_Sync_Products {
         }
     }
 
-    /**
-     * Return all listings with their IDs so the Chrome task can look up IDs by platform/URL.
-     */
     public static function ajax_get_listings_for_sync(): void {
         check_ajax_referer('edifice_nonce', 'nonce');
         if (! current_user_can('manage_options')) wp_die(-1);

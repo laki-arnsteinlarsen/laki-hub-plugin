@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.0.1'); // deployed 2026-05-05T12:54Z
+define('EDIFICE_VERSION', '1.0.2'); // deployed with Gumroad OAuth // deployed 2026-05-05T12:54Z
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -70,3 +70,7 @@ add_action('wp_ajax_edifice_sync_chrome_revenue',    ['Edifice_Sync_Products', '
 add_action('wp_ajax_edifice_sync_save_settings',     ['Edifice_Sync_Products', 'ajax_save_settings']);
 add_action('wp_ajax_edifice_sync_get_settings',      ['Edifice_Sync_Products', 'ajax_get_settings']);
 add_action('wp_ajax_edifice_sync_get_listings',      ['Edifice_Sync_Products', 'ajax_get_listings_for_sync']);
+
+// AJAX handlers — Gumroad OAuth
+add_action('wp_ajax_edifice_sync_get_oauth_url',   ['Edifice_Sync_Products', 'ajax_get_oauth_url']);
+add_action('wp_ajax_edifice_sync_disconnect',       ['Edifice_Sync_Products', 'ajax_disconnect_gumroad']);
