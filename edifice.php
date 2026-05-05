@@ -20,6 +20,7 @@ require_once EDIFICE_DIR . 'includes/class-projects.php';
 require_once EDIFICE_DIR . 'includes/class-time.php';
 require_once EDIFICE_DIR . 'includes/class-revenue.php';
 require_once EDIFICE_DIR . 'includes/class-products-digital.php';
+require_once EDIFICE_DIR . 'includes/class-sync-products.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
 
@@ -32,6 +33,7 @@ register_activation_hook(__FILE__, function () {
 
 add_action('plugins_loaded', function () {
     Edifice_DB::maybe_migrate();
+    Edifice_Sync_Products::init();
     Edifice_Admin::init();
     Edifice_Frontend::init();
 });
@@ -60,3 +62,11 @@ add_action('wp_ajax_edifice_listing_delete',         ['Edifice_Products_Digital'
 add_action('wp_ajax_edifice_product_revenue_save',   ['Edifice_Products_Digital', 'ajax_save_revenue']);
 add_action('wp_ajax_edifice_product_revenue_delete', ['Edifice_Products_Digital', 'ajax_delete_revenue']);
 add_action('wp_ajax_edifice_listings_for_product',   ['Edifice_Products_Digital', 'ajax_listings_for_product']);
+
+// AJAX handlers — product sync
+add_action('wp_ajax_edifice_sync_gumroad',          ['Edifice_Sync_Products', 'ajax_trigger_gumroad']);
+add_action('wp_ajax_edifice_sync_chrome_batch',      ['Edifice_Sync_Products', 'ajax_chrome_sync_batch']);
+add_action('wp_ajax_edifice_sync_chrome_revenue',    ['Edifice_Sync_Products', 'ajax_chrome_sync_revenue']);
+add_action('wp_ajax_edifice_sync_save_settings',     ['Edifice_Sync_Products', 'ajax_save_settings']);
+add_action('wp_ajax_edifice_sync_get_settings',      ['Edifice_Sync_Products', 'ajax_get_settings']);
+add_action('wp_ajax_edifice_sync_get_listings',      ['Edifice_Sync_Products', 'ajax_get_listings_for_sync']);

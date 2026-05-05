@@ -43,7 +43,10 @@ $type_labels = [
 
     <div class="lh-header">
       <h1>🛍️ Produkter &amp; Passiv inntekt</h1>
-      <button class="lh-btn lh-btn--primary" id="btn-add-product">+ Nytt produkt</button>
+      <div style="display:flex;gap:8px">
+        <button class="lh-btn lh-btn--ghost lh-btn--sm" id="btn-open-sync">🔄 Synk</button>
+        <button class="lh-btn lh-btn--primary" id="btn-add-product">+ Nytt produkt</button>
+      </div>
     </div>
 
     <!-- Stats -->
@@ -63,6 +66,45 @@ $type_labels = [
       <div class="lh-stat">
         <span class="lh-stat__label">Live listings</span>
         <span class="lh-stat__value"><?= (int)$totals['active_listings'] ?></span>
+      </div>
+    </div>
+
+    <!-- Sync panel -->
+    <div class="lh-card sync-panel" id="sync-panel" style="margin-bottom:20px;display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="margin:0;font-size:15px;font-weight:600">🔄 Automatisk omsetningssynk</h3>
+        <button class="lh-btn lh-btn--ghost lh-btn--sm" id="btn-sync-panel-close">✕ Lukk</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="sync-platform-card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:18px">🛒</span><strong>Gumroad</strong>
+            <span class="lh-badge lh-badge--active" style="margin-left:auto;font-size:10px">API</span>
+          </div>
+          <p style="font-size:12px;color:#666;margin:0 0 10px">Synker daglig kl. 06:00 UTC via Gumroad API.</p>
+          <label style="display:block;font-size:11px;font-weight:600;margin-bottom:4px;color:#555">Access Token</label>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <input type="password" id="gumroad-token-input" class="lh-input" placeholder="Lim inn token fra Gumroad Settings..." style="flex:1;font-size:12px;padding:6px 8px">
+            <button class="lh-btn lh-btn--secondary lh-btn--sm" id="btn-save-gumroad-token">Lagre</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="lh-btn lh-btn--primary lh-btn--sm" id="btn-sync-gumroad">▶ Synk nå</button>
+            <span id="gumroad-sync-status" style="font-size:12px;color:#666"></span>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:#999">Sist synket: <span id="gumroad-last-sync">—</span></div>
+        </div>
+        <div class="sync-platform-card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:18px">🌐</span><strong>PromptBase · KDP · Upwork</strong>
+            <span class="lh-badge lh-badge--pending" style="margin-left:auto;font-size:10px">Chrome</span>
+          </div>
+          <p style="font-size:12px;color:#666;margin:0 0 10px">Cowork-agenten åpner dashboardene dine og henter tallene automatisk.</p>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="lh-btn lh-btn--primary lh-btn--sm" id="btn-sync-chrome-now">▶ Kjør Chrome-sync nå</button>
+            <span id="chrome-sync-status" style="font-size:12px;color:#666"></span>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:#999">Sist synket: <span id="chrome-last-sync">—</span></div>
+        </div>
       </div>
     </div>
 
@@ -620,6 +662,55 @@ $type_labels = [
       closeModal('revenue-modal');
       if (currentPid) loadDetail(currentPid);
     });
+  });
+
+
+  // ── Sync panel ───────────────────────────────────────────────────────────
+
+  // Load settings on page load
+  ajax('edifice_sync_get_settings', {}, function(d) {
+    if (d.gumroad_token) $('#gumroad-token-input').val('••••••••');
+    $('#gumroad-last-sync').text(d.last_gumroad || '—');
+    $('#chrome-last-sync').text(d.last_chrome || '—');
+  });
+
+  $('#btn-open-sync').on('click', function() {
+    $('#sync-panel').slideDown(200);
+  });
+  $('#btn-sync-panel-close').on('click', function() {
+    $('#sync-panel').slideUp(200);
+  });
+
+  $('#btn-save-gumroad-token').on('click', function() {
+    var token = $('#gumroad-token-input').val();
+    if (!token || token === '••••••••') { alert('Lim inn et gyldig token.'); return; }
+    ajax('edifice_sync_save_settings', { gumroad_token: token }, function() {
+      $('#gumroad-sync-status').text('✅ Token lagret').css('color','#16a34a');
+      setTimeout(function(){ $('#gumroad-sync-status').text(''); }, 3000);
+    });
+  });
+
+  $('#btn-sync-gumroad').on('click', function() {
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('Synker...');
+    $('#gumroad-sync-status').text('').css('color','#666');
+    ajax('edifice_sync_gumroad', {}, function(d) {
+      $btn.prop('disabled', false).text('▶ Synk nå');
+      $('#gumroad-sync-status').text('✅ ' + d.message).css('color','#16a34a');
+      $('#gumroad-last-sync').text(new Date().toLocaleString('no-NO'));
+      // Reload product cards to show updated revenue
+      setTimeout(function(){ location.reload(); }, 1500);
+    });
+  });
+
+  $('#btn-sync-chrome-now').on('click', function() {
+    $('#chrome-sync-status').text('Starter Chrome-sync via Cowork...').css('color','#666');
+    // This sends a message to the Cowork agent to run the Chrome sync
+    if (window.sendPrompt) {
+      window.sendPrompt('Kjør Chrome-sync for produktinntekter: hent tall fra PromptBase, KDP og Upwork og lagre i Edifice.');
+    } else {
+      $('#chrome-sync-status').text('⚠️ Åpne Cowork og si: «Kjør Chrome-sync for produktinntekter»').css('color','#b45309');
+    }
   });
 
 })(jQuery);
