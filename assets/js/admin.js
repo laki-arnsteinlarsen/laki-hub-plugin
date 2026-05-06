@@ -402,3 +402,13 @@
   link.href = url;
   document.head.appendChild(link);
 }());
+
+/* ── Favicon debug (temporary) ─────────────────────────────────────────── */
+(function () {
+  console.log('[Edifice favicon] Edifice defined:', typeof Edifice !== 'undefined');
+  if (typeof Edifice !== 'undefined') {
+    console.log('[Edifice favicon] plugin_url:', Edifice.plugin_url);
+    var links = document.querySelectorAll('link[rel*="icon"]');
+    console.log('[Edifice favicon] existing icon links:', links.length, Array.from(links).map(function(l){return l.href;}));
+  }
+}());
