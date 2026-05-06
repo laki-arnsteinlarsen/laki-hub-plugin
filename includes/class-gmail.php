@@ -2,7 +2,7 @@
 defined('ABSPATH') || exit;
 
 /**
- * LakiHub_Gmail — Google OAuth2 + Gmail API integration.
+ * Edifice_Gmail — Google OAuth2 + Gmail API integration.
  *
  * Flow:
  *   1. Admin enters Client ID + Secret in Settings page.
@@ -11,15 +11,15 @@ defined('ABSPATH') || exit;
  *   4. handle_callback() exchanges code for access + refresh tokens.
  *   5. ajax_get_emails() fetches last N emails for a given address.
  */
-class LakiHub_Gmail {
+class Edifice_Gmail {
 
-    const OPT_CREDS  = 'laki_gmail_credentials'; // ['client_id', 'client_secret']
-    const OPT_TOKENS = 'laki_gmail_tokens';       // ['access_token', 'refresh_token', 'expires_at']
+    const OPT_CREDS  = 'edifice_gmail_credentials'; // ['client_id', 'client_secret']
+    const OPT_TOKENS = 'edifice_gmail_tokens';       // ['access_token', 'refresh_token', 'expires_at']
 
     // ── OAuth helpers ──────────────────────────────────────────────────────
 
     public static function redirect_uri(): string {
-        return admin_url('admin.php?page=laki-hub-settings&_gmail_callback=1');
+        return admin_url('admin.php?page=edifice-settings&_gmail_callback=1');
     }
 
     public static function get_auth_url(): string {
@@ -32,7 +32,7 @@ class LakiHub_Gmail {
             'scope'         => 'https://www.googleapis.com/auth/gmail.readonly',
             'access_type'   => 'offline',
             'prompt'        => 'consent',
-            'state'         => wp_create_nonce('laki_gmail_oauth'),
+            'state'         => wp_create_nonce('edifice_gmail_oauth'),
         ]);
     }
 
@@ -44,7 +44,7 @@ class LakiHub_Gmail {
     // ── Token exchange ─────────────────────────────────────────────────────
 
     public static function handle_callback(string $code, string $state): bool {
-        if (!wp_verify_nonce($state, 'laki_gmail_oauth')) return false;
+        if (!wp_verify_nonce($state, 'edifice_gmail_oauth')) return false;
         $creds = get_option(self::OPT_CREDS, []);
         $resp  = wp_remote_post('https://oauth2.googleapis.com/token', [
             'body' => [
@@ -135,9 +135,9 @@ class LakiHub_Gmail {
             foreach ($detail['payload']['headers'] as $hdr) {
                 $h[strtolower($hdr['name'])] = $hdr['value'];
             }
-            $from   = $h['from'] ?? '';
-            $sent   = stripos($from, $admin_mail) !== false;
-            $date_s = $h['date'] ?? '';
+            $from    = $h['from'] ?? '';
+            $sent    = stripos($from, $admin_mail) !== false;
+            $date_s  = $h['date'] ?? '';
             $date_ts = $date_s ? strtotime($date_s) : 0;
 
             $emails[] = [
@@ -156,7 +156,7 @@ class LakiHub_Gmail {
     // ── AJAX ───────────────────────────────────────────────────────────────
 
     public static function ajax_get_emails(): void {
-        check_ajax_referer('laki_hub_nonce', 'nonce');
+        check_ajax_referer('edifice_nonce', 'nonce');
         $email = sanitize_email($_POST['email'] ?? '');
         if (!$email) {
             wp_send_json_error('Mangler e-postadresse');

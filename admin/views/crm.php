@@ -1,9 +1,9 @@
 <?php
 defined('ABSPATH') || exit;
 
-$contacts  = LakiHub_CRM::get_all();
-$companies = LakiHub_CRM::get_companies();   // for person-form dropdown
-$gmail_on  = LakiHub_Gmail::is_connected();
+$contacts  = Edifice_CRM::get_all();
+$companies = Edifice_CRM::get_companies();   // for person-form dropdown
+$gmail_on  = Edifice_Gmail::is_connected();
 
 $status_labels = [
     'active'   => ['Aktiv',   'green'],
@@ -51,6 +51,7 @@ $n_persons   = count($contacts) - $n_companies;
         <?php foreach ($contacts as $c):
           [$slabel, $scolor] = $status_labels[$c['status']] ?? ['?', 'gray'];
           $icon = $c['type'] === 'company' ? '🏢' : '👤';
+          $cat_arr = is_array($c['category']) ? $c['category'] : [];
         ?>
           <tr data-type="<?= esc_attr($c['type']) ?>">
             <td>
@@ -65,7 +66,7 @@ $n_persons   = count($contacts) - $n_companies;
             </td>
             <td><?= esc_html($c['email']) ?: '—' ?></td>
             <td><?= esc_html($c['phone']) ?: '—' ?></td>
-            <td><?= esc_html($c['category']) ?: '—' ?></td>
+            <td><?= $cat_arr ? esc_html(implode(', ', $cat_arr)) : '—' ?></td>
             <td><span class="lh-badge lh-badge-<?= $scolor ?>"><?= $slabel ?></span></td>
             <td class="actions">
               <button class="lh-btn lh-btn-secondary lh-btn-sm lh-view-crm-btn"
@@ -74,7 +75,7 @@ $n_persons   = count($contacts) - $n_companies;
                 data-modal="modal-crm"
                 data-record="<?= esc_attr(json_encode($c)) ?>">Rediger</button>
               <button class="lh-btn lh-btn-danger lh-btn-sm lh-delete-btn"
-                data-action="laki_crm_delete" data-id="<?= $c['id'] ?>">Slett</button>
+                data-action="edifice_crm_delete" data-id="<?= $c['id'] ?>">Slett</button>
             </td>
           </tr>
         <?php endforeach; ?>
@@ -142,7 +143,7 @@ $n_persons   = count($contacts) - $n_companies;
     </div>
     <div class="lh-modal-body">
       <form class="lh-ajax-form">
-        <input type="hidden" name="ajax_action" value="laki_crm_save">
+        <input type="hidden" name="ajax_action" value="edifice_crm_save">
         <input type="hidden" name="id" value="">
         <input type="hidden" name="brreg_data" value="">
 

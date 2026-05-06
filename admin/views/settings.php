@@ -3,7 +3,7 @@ defined('ABSPATH') || exit;
 
 // Handle Gmail OAuth callback (Google redirects here with ?code=…&state=…)
 if (!empty($_GET['_gmail_callback']) && !empty($_GET['code'])) {
-    $ok = LakiHub_Gmail::handle_callback(
+    $ok = Edifice_Gmail::handle_callback(
         sanitize_text_field($_GET['code']),
         sanitize_text_field($_GET['state'] ?? '')
     );
@@ -14,25 +14,25 @@ if (!empty($_GET['_gmail_callback']) && !empty($_GET['code'])) {
 
 // Handle disconnect
 if (!empty($_GET['_gmail_disconnect'])) {
-    check_admin_referer('laki_gmail_disconnect');
-    LakiHub_Gmail::disconnect();
-    wp_safe_redirect(admin_url('admin.php?page=laki-hub-settings'));
+    check_admin_referer('edifice_gmail_disconnect');
+    Edifice_Gmail::disconnect();
+    wp_safe_redirect(admin_url('admin.php?page=edifice-settings'));
     exit;
 }
 
 // Save credentials
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['laki_gmail_save'])) {
-    check_admin_referer('laki_gmail_settings');
-    update_option(LakiHub_Gmail::OPT_CREDS, [
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['edifice_gmail_save'])) {
+    check_admin_referer('edifice_gmail_settings');
+    update_option(Edifice_Gmail::OPT_CREDS, [
         'client_id'     => sanitize_text_field($_POST['client_id']     ?? ''),
         'client_secret' => sanitize_text_field($_POST['client_secret'] ?? ''),
     ]);
     echo '<div class="notice notice-success"><p>Legitimasjon lagret.</p></div>';
 }
 
-$creds     = get_option(LakiHub_Gmail::OPT_CREDS, []);
-$connected = LakiHub_Gmail::is_connected();
-$auth_url  = LakiHub_Gmail::get_auth_url();
+$creds     = get_option(Edifice_Gmail::OPT_CREDS, []);
+$connected = Edifice_Gmail::is_connected();
+$auth_url  = Edifice_Gmail::get_auth_url();
 ?>
 <div class="lh-wrap">
   <div class="lh-header">
@@ -65,14 +65,14 @@ $auth_url  = LakiHub_Gmail::get_auth_url();
             <div style="font-size:12px;color:var(--lh-muted);margin-top:2px">E-posthistorikk er tilgjengelig i kontaktvisning (person)</div>
           </div>
         </div>
-        <a href="<?= esc_url(wp_nonce_url(admin_url('admin.php?page=laki-hub-settings&_gmail_disconnect=1'), 'laki_gmail_disconnect')) ?>"
+        <a href="<?= esc_url(wp_nonce_url(admin_url('admin.php?page=edifice-settings&_gmail_disconnect=1'), 'edifice_gmail_disconnect')) ?>"
            class="lh-btn lh-btn-danger"
            onclick="return confirm('Koble fra Gmail?')">Koble fra Gmail</a>
 
       <?php else: ?>
         <!-- Setup form -->
         <form method="post" action="">
-          <?php wp_nonce_field('laki_gmail_settings'); ?>
+          <?php wp_nonce_field('edifice_gmail_settings'); ?>
           <div class="lh-form-grid" style="max-width:640px;margin-bottom:16px">
             <div class="lh-form-row" style="margin-bottom:0">
               <label>Google Client ID</label>
@@ -88,7 +88,7 @@ $auth_url  = LakiHub_Gmail::get_auth_url();
             </div>
           </div>
           <div style="display:flex;gap:10px;align-items:center">
-            <button type="submit" name="laki_gmail_save" value="1" class="lh-btn lh-btn-secondary">
+            <button type="submit" name="edifice_gmail_save" value="1" class="lh-btn lh-btn-secondary">
               Lagre legitimasjon
             </button>
             <?php if (!empty($creds['client_id']) && $auth_url): ?>
@@ -110,7 +110,7 @@ $auth_url  = LakiHub_Gmail::get_auth_url();
             <li>Credentials → Create → <strong>OAuth client ID</strong> → Nettapplikasjon</li>
             <li>Legg til autorisert omdirigerings-URI:<br>
               <code style="display:inline-block;margin-top:4px;background:#e2e8f0;padding:4px 8px;border-radius:5px;font-size:12px">
-                <?= esc_html(LakiHub_Gmail::redirect_uri()) ?>
+                <?= esc_html(Edifice_Gmail::redirect_uri()) ?>
               </code>
             </li>
             <li>Kopier Client ID og Client Secret hit, lagre, klikk <em>Koble til Gmail</em></li>

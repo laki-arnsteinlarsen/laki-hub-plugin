@@ -1,8 +1,8 @@
 <?php
 defined('ABSPATH') || exit;
 
-$projects = LakiHub_Projects::get_all();
-$contacts = LakiHub_CRM::get_all();
+$projects = Edifice_Projects::get_all();
+$contacts = Edifice_CRM::get_all();
 
 $status_map = [
     'active'    => ['Aktiv',      'green'],
@@ -54,7 +54,7 @@ $status_map = [
               <button class="lh-btn lh-btn-secondary lh-btn-sm lh-edit-btn"
                 data-modal="modal-project" data-record="<?= esc_attr(json_encode($p)) ?>">Rediger</button>
               <button class="lh-btn lh-btn-danger lh-btn-sm lh-delete-btn"
-                data-action="laki_project_delete" data-id="<?= $p['id'] ?>">Slett</button>
+                data-action="edifice_project_delete" data-id="<?= $p['id'] ?>">Slett</button>
             </td>
           </tr>
         <?php endforeach; ?>
@@ -104,7 +104,7 @@ $status_map = [
     </div>
     <div class="lh-modal-body">
       <form class="lh-ajax-form">
-        <input type="hidden" name="ajax_action" value="laki_project_save">
+        <input type="hidden" name="ajax_action" value="edifice_project_save">
         <input type="hidden" name="id" value="">
         <div class="lh-form-row">
           <label>Navn *</label>

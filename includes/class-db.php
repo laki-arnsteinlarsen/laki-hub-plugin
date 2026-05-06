@@ -1,24 +1,23 @@
 <?php
 defined('ABSPATH') || exit;
 
-class LakiHub_DB {
+class Edifice_DB {
 
     public static function install() {
         global $wpdb;
         $c = $wpdb->get_charset_collate();
-
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        // CRM — kontakter (selskaper og personer)
-        dbDelta("CREATE TABLE {$wpdb->prefix}laki_contacts (
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_contacts (
             id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            type        ENUM('company','person') NOT NULL DEFAULT 'company',
+            type        VARCHAR(50)  NOT NULL DEFAULT 'company',
+            company_id  BIGINT UNSIGNED DEFAULT NULL,
             name        VARCHAR(255) NOT NULL,
             org_nr      VARCHAR(20)  DEFAULT NULL,
             email       VARCHAR(255) DEFAULT NULL,
             phone       VARCHAR(50)  DEFAULT NULL,
             address     VARCHAR(500) DEFAULT NULL,
-            category    VARCHAR(100) DEFAULT NULL,
+            category    TEXT         DEFAULT NULL,
             status      ENUM('lead','active','inactive') NOT NULL DEFAULT 'active',
             brreg_data  LONGTEXT     DEFAULT NULL,
             notes       LONGTEXT     DEFAULT NULL,
@@ -26,8 +25,7 @@ class LakiHub_DB {
             updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) $c;");
 
-        // Prosjekter
-        dbDelta("CREATE TABLE {$wpdb->prefix}laki_projects (
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_projects (
             id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             contact_id  BIGINT UNSIGNED DEFAULT NULL,
             name        VARCHAR(255) NOT NULL,
@@ -40,8 +38,7 @@ class LakiHub_DB {
             updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) $c;");
 
-        // Timeføring
-        dbDelta("CREATE TABLE {$wpdb->prefix}laki_time_entries (
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_time_entries (
             id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             project_id  BIGINT UNSIGNED DEFAULT NULL,
             contact_id  BIGINT UNSIGNED DEFAULT NULL,
@@ -53,8 +50,7 @@ class LakiHub_DB {
             created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) $c;");
 
-        // Inntekter / fakturaer
-        dbDelta("CREATE TABLE {$wpdb->prefix}laki_revenue (
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_revenue (
             id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             contact_id  BIGINT UNSIGNED DEFAULT NULL,
             project_id  BIGINT UNSIGNED DEFAULT NULL,
@@ -69,31 +65,159 @@ class LakiHub_DB {
             created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) $c;");
 
-        update_option('laki_hub_db_version', LAKI_HUB_VERSION);
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_products (
+            id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            name        VARCHAR(255) NOT NULL,
+            type        VARCHAR(50)  NOT NULL DEFAULT 'ebook',
+            brand       VARCHAR(100) NOT NULL DEFAULT 'LAKI',
+            status      VARCHAR(20)  NOT NULL DEFAULT 'active',
+            description LONGTEXT     DEFAULT NULL,
+            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) $c;");
+
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_product_listings (
+            id             BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            product_id     BIGINT UNSIGNED NOT NULL,
+            platform       VARCHAR(50)  NOT NULL DEFAULT 'Gumroad',
+            listing_url    VARCHAR(500) DEFAULT NULL,
+            price          DECIMAL(10,2) NOT NULL DEFAULT 0,
+            currency       VARCHAR(3)   NOT NULL DEFAULT 'USD',
+            listing_status VARCHAR(30)  NOT NULL DEFAULT 'live',
+            notes          LONGTEXT     DEFAULT NULL,
+            created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) $c;");
+
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_product_revenue (
+            id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            listing_id    BIGINT UNSIGNED NOT NULL,
+            snapshot_date DATE         NOT NULL,
+            revenue       DECIMAL(12,2) NOT NULL DEFAULT 0,
+            sales_count   INT UNSIGNED  NOT NULL DEFAULT 0,
+            currency      VARCHAR(3)   NOT NULL DEFAULT 'USD',
+            notes         LONGTEXT     DEFAULT NULL,
+            synced_at     DATETIME     DEFAULT NULL,
+            created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_listing_date (listing_id, snapshot_date)
+        ) $c;");
+
+        update_option('edifice_db_version', EDIFICE_VERSION);
     }
 
-    /**
-     * Run lightweight ALTER TABLE migrations for upgrades that don't involve
-     * creating new tables (dbDelta handles new tables; ALTER is needed for
-     * adding columns to existing tables).
-     *
-     * Safe to call on every plugins_loaded — each check is a cheap SHOW COLUMNS.
-     */
-    public static function maybe_migrate(): void {
+    public static function maybe_migrate() {
         global $wpdb;
-        $t = $wpdb->prefix . 'laki_contacts';
 
-        // v1.1 — add company_id so persons can be linked to a company contact.
-        $cols = array_column(
-            $wpdb->get_results("SHOW COLUMNS FROM `$t`", ARRAY_A) ?: [],
-            'Field'
-        );
-        if (!in_array('company_id', $cols, true)) {
-            $wpdb->query(
-                "ALTER TABLE `$t`
-                 ADD COLUMN `company_id` BIGINT UNSIGNED DEFAULT NULL AFTER `type`,
-                 ADD INDEX  `idx_company_id` (`company_id`)"
-            );
+        // ── Migration 0: Rename WP options laki_hub_* → edifice_* ───────────────
+        $option_map = [
+            'laki_hub_page_id'    => 'edifice_page_id',
+            'laki_hub_db_version' => 'edifice_db_version',
+        ];
+        foreach ($option_map as $old_key => $new_key) {
+            $val = get_option($old_key);
+            if ($val !== false && get_option($new_key) === false) {
+                update_option($new_key, $val);
+                delete_option($old_key);
+            }
+        }
+
+        // ── Migration 1: Rename laki_ tables → edifice_ ─────────────────────────
+        $table_map = [
+            'laki_contacts'     => 'edifice_contacts',
+            'laki_projects'     => 'edifice_projects',
+            'laki_time_entries' => 'edifice_time_entries',
+            'laki_revenue'      => 'edifice_revenue',
+        ];
+        foreach ($table_map as $old_suffix => $new_suffix) {
+            $old = $wpdb->prefix . $old_suffix;
+            $new = $wpdb->prefix . $new_suffix;
+            $old_exists = $wpdb->get_var("SHOW TABLES LIKE '$old'") === $old;
+            $new_exists = $wpdb->get_var("SHOW TABLES LIKE '$new'") === $new;
+
+            if ($old_exists && ! $new_exists) {
+                $wpdb->query("RENAME TABLE `$old` TO `$new`");
+            } elseif ($old_exists && $new_exists) {
+                $old_rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$old`");
+                $new_rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$new`");
+                if ($old_rows > 0 && $new_rows === 0) {
+                    $wpdb->query("INSERT INTO `$new` SELECT * FROM `$old`");
+                }
+                if ($old_rows === 0 || $new_rows === 0) {
+                    $wpdb->query("DROP TABLE IF EXISTS `$old`");
+                }
+            }
+        }
+
+        $contact_table = $wpdb->prefix . 'edifice_contacts';
+        $cols = $wpdb->get_results($wpdb->prepare(
+            "SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s",
+            DB_NAME, $contact_table
+        ), OBJECT_K);
+
+        if (! empty($cols)) {
+            // ── Migration 2: type ENUM → VARCHAR(50) ────────────────────────────
+            if (isset($cols['type']) && stripos($cols['type']->COLUMN_TYPE, 'enum') !== false) {
+                $wpdb->query("ALTER TABLE `$contact_table` MODIFY `type` VARCHAR(50) NOT NULL DEFAULT 'company'");
+            }
+
+            // ── Migration 3: category VARCHAR → TEXT ────────────────────────────
+            if (isset($cols['category']) && stripos($cols['category']->COLUMN_TYPE, 'varchar') !== false) {
+                $wpdb->query("ALTER TABLE `$contact_table` MODIFY `category` TEXT DEFAULT NULL");
+            }
+
+            // ── Migration 5: add company_id for person→company linkage ──────────
+            if (! isset($cols['company_id'])) {
+                $wpdb->query(
+                    "ALTER TABLE `$contact_table`
+                     ADD COLUMN `company_id` BIGINT UNSIGNED DEFAULT NULL AFTER `type`,
+                     ADD INDEX  `idx_company_id` (`company_id`)"
+                );
+            }
+        }
+
+        // ── Migration 4: Create product tables if missing (Produkter module) ────
+        $products_table = $wpdb->prefix . 'edifice_products';
+        if ($wpdb->get_var("SHOW TABLES LIKE '$products_table'") !== $products_table) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            $c = $wpdb->get_charset_collate();
+
+            dbDelta("CREATE TABLE {$wpdb->prefix}edifice_products (
+                id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name        VARCHAR(255) NOT NULL,
+                type        VARCHAR(50)  NOT NULL DEFAULT 'ebook',
+                brand       VARCHAR(100) NOT NULL DEFAULT 'LAKI',
+                status      VARCHAR(20)  NOT NULL DEFAULT 'active',
+                description LONGTEXT     DEFAULT NULL,
+                created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) $c;");
+
+            dbDelta("CREATE TABLE {$wpdb->prefix}edifice_product_listings (
+                id             BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                product_id     BIGINT UNSIGNED NOT NULL,
+                platform       VARCHAR(50)  NOT NULL DEFAULT 'Gumroad',
+                listing_url    VARCHAR(500) DEFAULT NULL,
+                price          DECIMAL(10,2) NOT NULL DEFAULT 0,
+                currency       VARCHAR(3)   NOT NULL DEFAULT 'USD',
+                listing_status VARCHAR(30)  NOT NULL DEFAULT 'live',
+                notes          LONGTEXT     DEFAULT NULL,
+                created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) $c;");
+
+            dbDelta("CREATE TABLE {$wpdb->prefix}edifice_product_revenue (
+                id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                listing_id    BIGINT UNSIGNED NOT NULL,
+                snapshot_date DATE         NOT NULL,
+                revenue       DECIMAL(12,2) NOT NULL DEFAULT 0,
+                sales_count   INT UNSIGNED  NOT NULL DEFAULT 0,
+                currency      VARCHAR(3)   NOT NULL DEFAULT 'USD',
+                notes         LONGTEXT     DEFAULT NULL,
+                synced_at     DATETIME     DEFAULT NULL,
+                created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_listing_date (listing_id, snapshot_date)
+            ) $c;");
         }
     }
 }

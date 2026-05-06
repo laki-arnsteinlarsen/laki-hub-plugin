@@ -9,12 +9,13 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.0.2'); // deployed with Gumroad OAuth // deployed 2026-05-05T12:54Z
+define('EDIFICE_VERSION', '1.1.0'); // v1.1: CRM persons, Gmail, view modals, favicon
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
 require_once EDIFICE_DIR . 'includes/class-db.php';
 require_once EDIFICE_DIR . 'includes/class-brreg.php';
+require_once EDIFICE_DIR . 'includes/class-gmail.php';
 require_once EDIFICE_DIR . 'includes/class-crm.php';
 require_once EDIFICE_DIR . 'includes/class-projects.php';
 require_once EDIFICE_DIR . 'includes/class-time.php';
@@ -42,6 +43,8 @@ add_action('plugins_loaded', function () {
 add_action('wp_ajax_edifice_brreg_lookup',    ['Edifice_Brreg',    'ajax_lookup']);
 add_action('wp_ajax_edifice_crm_save',        ['Edifice_CRM',      'ajax_save']);
 add_action('wp_ajax_edifice_crm_delete',      ['Edifice_CRM',      'ajax_delete']);
+add_action('wp_ajax_edifice_crm_get_persons', ['Edifice_CRM',      'ajax_get_persons']);
+add_action('wp_ajax_edifice_gmail_get_emails',['Edifice_Gmail',    'ajax_get_emails']);
 add_action('wp_ajax_edifice_time_save',        ['Edifice_Time',    'ajax_save']);
 add_action('wp_ajax_edifice_time_delete',      ['Edifice_Time',    'ajax_delete']);
 add_action('wp_ajax_edifice_time_start',       ['Edifice_Time',    'ajax_start_timer']);

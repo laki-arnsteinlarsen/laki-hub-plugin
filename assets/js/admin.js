@@ -1,4 +1,4 @@
-/* Laki Hub — Admin JS v1.1 */
+/* Edifice — Admin JS v1.1 */
 (function ($) {
   'use strict';
 
@@ -43,7 +43,7 @@
 
   /* ── AJAX helper ────────────────────────────────────────────────────────── */
   window.lhAjax = (action, data, cb) => {
-    $.post(LakiHub.ajax_url, { action, nonce: LakiHub.nonce, ...data }, function (r) {
+    $.post(Edifice.ajax_url, { action, nonce: Edifice.nonce, ...data }, function (r) {
       if (r.success) {
         toast(r.data?.msg || 'Lagret ✓', 'success');
         cb && cb(r.data);
@@ -86,9 +86,9 @@
     const $res = $(this).siblings('.lh-brreg-results');
     if (q.length < 2) { $res.hide(); return; }
     brregTimer = setTimeout(() => {
-      $.post(LakiHub.ajax_url, {
-        action: 'laki_brreg_lookup',
-        nonce:  LakiHub.nonce,
+      $.post(Edifice.ajax_url, {
+        action: 'edifice_brreg_lookup',
+        nonce:  Edifice.nonce,
         query:  q,
       }, function (r) {
         if (!r.success) return;
@@ -219,9 +219,9 @@
       $('#view-crm-persons-section').show();
       $('#view-crm-gmail-section').hide();
       $('#view-crm-persons-list').html('<span style="color:var(--lh-muted);font-size:13px">Laster…</span>');
-      $.post(LakiHub.ajax_url, {
-        action:     'laki_crm_get_persons',
-        nonce:      LakiHub.nonce,
+      $.post(Edifice.ajax_url, {
+        action:     'edifice_crm_get_persons',
+        nonce:      Edifice.nonce,
         company_id: d.id,
       }, function (r) {
         if (!r.success || !r.data || !r.data.length) {
@@ -276,11 +276,11 @@
     const $list   = $('#view-crm-gmail-list');
     const $status = $('#view-gmail-status');
 
-    if (!LakiHub.gmail_enabled) {
+    if (!Edifice.gmail_enabled) {
       $list.html(
         `<div class="lh-gmail-connect">
           ⚠️ Gmail er ikke koblet til.
-          <a href="${LakiHub.settings_url}" class="lh-btn lh-btn-secondary lh-btn-sm" style="margin-left:auto">
+          <a href="${Edifice.settings_url}" class="lh-btn lh-btn-secondary lh-btn-sm" style="margin-left:auto">
             Koble til →
           </a>
         </div>`
@@ -292,9 +292,9 @@
     $list.html('<div class="lh-gmail-empty">Laster e-poster…</div>');
     $status.text('Laster…').attr('class', 'lh-badge lh-badge-gray');
 
-    $.post(LakiHub.ajax_url, {
-      action: 'laki_gmail_get_emails',
-      nonce:  LakiHub.nonce,
+    $.post(Edifice.ajax_url, {
+      action: 'edifice_gmail_get_emails',
+      nonce:  Edifice.nonce,
       email:  email,
     }, function (r) {
       if (!r.success) {
