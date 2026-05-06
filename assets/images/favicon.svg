@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark circle background -->
+  <circle cx="16" cy="16" r="16" fill="#1e293b"/>
+
+  <!-- Volcano body -->
+  <polygon points="16,9 27,28 5,28" fill="#334155"/>
+
+  <!-- Lava highlight on left slope -->
+  <path d="M16,9 L11,20 L10,28" stroke="#f97316" stroke-width="1.2" fill="none" opacity="0.5"/>
+  <path d="M16,9 L20,20 L21,28" stroke="#ef4444" stroke-width="1.0" fill="none" opacity="0.4"/>
+
+  <!-- Crater rim -->
+  <ellipse cx="16" cy="9.5" rx="3.8" ry="1.6" fill="#1e293b"/>
+
+  <!-- Lava glow in crater (pulsing) -->
+  <ellipse cx="16" cy="9.5" rx="3" ry="1.2" fill="#f97316">
+    <animate attributeName="opacity" values="0.55;1;0.55" dur="1.4s" repeatCount="indefinite"/>
+    <animate attributeName="rx" values="2.4;3.2;2.4" dur="1.4s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="16" cy="9.5" rx="1.5" ry="0.7" fill="#fbbf24" opacity="0.9">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="0.9s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Eruption particle — center, fast -->
+  <circle cx="16" cy="9.5" r="1.4" fill="#fbbf24">
+    <animate attributeName="cy"      values="9.5;1;9.5"   dur="1.2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0;1"       dur="1.2s" repeatCount="indefinite"/>
+    <animate attributeName="r"       values="1.4;0.4;1.4" dur="1.2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Eruption particle — left -->
+  <circle cx="16" cy="9.5" r="1.1" fill="#ef4444">
+    <animate attributeName="cy"      values="9.5;2;9.5"   dur="1.6s" repeatCount="indefinite" begin="0.4s"/>
+    <animate attributeName="cx"      values="16;12;16"    dur="1.6s" repeatCount="indefinite" begin="0.4s"/>
+    <animate attributeName="opacity" values="1;0;1"       dur="1.6s" repeatCount="indefinite" begin="0.4s"/>
+    <animate attributeName="r"       values="1.1;0.3;1.1" dur="1.6s" repeatCount="indefinite" begin="0.4s"/>
+  </circle>
+
+  <!-- Eruption particle — right -->
+  <circle cx="16" cy="9.5" r="1.0" fill="#fde68a">
+    <animate attributeName="cy"      values="9.5;3;9.5"   dur="1.5s" repeatCount="indefinite" begin="0.8s"/>
+    <animate attributeName="cx"      values="16;20;16"    dur="1.5s" repeatCount="indefinite" begin="0.8s"/>
+    <animate attributeName="opacity" values="1;0;1"       dur="1.5s" repeatCount="indefinite" begin="0.8s"/>
+    <animate attributeName="r"       values="1.0;0.3;1.0" dur="1.5s" repeatCount="indefinite" begin="0.8s"/>
+  </circle>
+
+  <!-- Smoke puff 1 -->
+  <circle cx="16" cy="8" r="2" fill="#94a3b8">
+    <animate attributeName="cy"      values="8;0"   dur="2.5s" repeatCount="indefinite"/>
+    <animate attributeName="r"       values="2;5.5" dur="2.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.45;0" dur="2.5s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Smoke puff 2 (offset) -->
+  <circle cx="15" cy="8" r="1.5" fill="#94a3b8">
+    <animate attributeName="cy"      values="8;-2"  dur="3s" repeatCount="indefinite" begin="1.3s"/>
+    <animate attributeName="cx"      values="15;13" dur="3s" repeatCount="indefinite" begin="1.3s"/>
+    <animate attributeName="r"       values="1.5;5" dur="3s" repeatCount="indefinite" begin="1.3s"/>
+    <animate attributeName="opacity" values="0.35;0" dur="3s" repeatCount="indefinite" begin="1.3s"/>
+  </circle>
+</svg>
