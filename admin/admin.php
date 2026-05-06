@@ -43,9 +43,11 @@ class Edifice_Admin {
     public static function inject_favicon() {
         $screen = get_current_screen();
         if (!$screen || strpos($screen->id, 'edifice') === false) return;
-        $url = esc_url(EDIFICE_URL . 'assets/images/favicon.svg');
+        $url = esc_url(EDIFICE_URL . 'assets/images/favicon.svg?v=' . EDIFICE_VERSION);
+        // Output link tags + JS override to beat browser favicon cache
         echo "<link rel=\"icon\" type=\"image/svg+xml\" href=\"{$url}\">\n";
         echo "<link rel=\"shortcut icon\" href=\"{$url}\">\n";
+        echo "<script>(function(){var u='{$url}';document.querySelectorAll('link[rel*=\"icon\"]').forEach(function(l){l.parentNode.removeChild(l);});var l=document.createElement('link');l.rel='icon';l.type='image/svg+xml';l.href=u;document.head.appendChild(l);})();</script>\n";
     }
 
     public static function page_dashboard() { include EDIFICE_DIR . 'admin/views/dashboard.php'; }
