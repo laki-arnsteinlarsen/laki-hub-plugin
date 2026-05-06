@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.1.0'); // v1.1: CRM persons, Gmail, view modals, favicon
+define('EDIFICE_VERSION', '1.1.1'); // bump to bust admin.js cache
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
