@@ -322,4 +322,72 @@ class Edifice_Products_Digital {
             'listings' => $listings,
         ]);
     }
+
+    /**
+     * Returns per-platform aggregates for the channel view.
+     * Returns array keyed by platform name with: listing_count, month_revenue, total_revenue, sales_total.
+     */
+    public static function get_channels_summary(): array {
+        global $wpdb;
+        $tl = $wpdb->prefix . 'edifice_product_listings';
+        $tr = $wpdb->prefix . 'edifice_product_revenue';
+
+        $rows = $wpdb->get_results("
+            SELECT l.platform,
+                   COUNT(DISTINCT l.id)                                                        AS listing_count,
+                   COALESCE(SUM(r.revenue), 0)                                                 AS total_revenue,
+                   COALESCE(SUM(r.sales_count), 0)                                            AS total_sales,
+                   COALESCE(SUM(CASE WHEN r.snapshot_date >= DATE_FORMAT(NOW(), '%Y-%m-01')
+                                     THEN r.revenue ELSE 0 END), 0)                           AS month_revenue,
+                   COALESCE(SUM(CASE WHEN r.snapshot_date >= DATE_FORMAT(NOW(), '%Y-%m-01')
+                                     THEN r.sales_count ELSE 0 END), 0)                      AS month_sales,
+                   MAX(r.snapshot_date)                                                        AS last_synced
+            FROM   `$tl` l
+            LEFT JOIN `$tr` r ON r.listing_id = l.id
+            GROUP BY l.platform
+            ORDER BY l.platform ASC
+        ", ARRAY_A);
+
+        $keyed = [];
+        foreach ($rows ?: [] as $row) {
+            $keyed[$row['platform']] = $row;
+        }
+        return $keyed;
+    }
+
+    public static function ajax_listings_for_channel(): void {
+        check_ajax_referer('edifice_nonce', 'nonce');
+        if (! current_user_can('manage_options')) wp_die(-1);
+
+        $platform = sanitize_text_field($_POST['platform'] ?? '');
+        if (! $platform) {
+            wp_send_json_error(['message' => 'No platform specified']);
+            return;
+        }
+
+        global $wpdb;
+        $tl = $wpdb->prefix . 'edifice_product_listings';
+        $tp = $wpdb->prefix . 'edifice_products';
+        $tr = $wpdb->prefix . 'edifice_product_revenue';
+
+        $listings = $wpdb->get_results($wpdb->prepare("
+            SELECT l.*,
+                   p.name                           AS product_name,
+                   p.brand                          AS product_brand,
+                   COALESCE(SUM(r.revenue), 0)     AS revenue_total,
+                   COALESCE(SUM(r.sales_count), 0) AS sales_total,
+                   MAX(r.snapshot_date)             AS last_synced,
+                   COALESCE(SUM(CASE WHEN r.snapshot_date >= DATE_FORMAT(NOW(), '%%Y-%%m-01')
+                                     THEN r.revenue ELSE 0 END), 0) AS month_revenue
+            FROM   `$tl` l
+            LEFT JOIN `$tp` p ON p.id = l.product_id
+            LEFT JOIN `$tr` r ON r.listing_id = l.id
+            WHERE  l.platform = %s
+            GROUP BY l.id
+            ORDER BY p.name ASC
+        ", $platform), ARRAY_A);
+
+        wp_send_json_success(['listings' => $listings ?: []]);
+    }
+
 }

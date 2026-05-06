@@ -62,6 +62,7 @@ add_action('wp_ajax_edifice_listing_delete',         ['Edifice_Products_Digital'
 add_action('wp_ajax_edifice_product_revenue_save',   ['Edifice_Products_Digital', 'ajax_save_revenue']);
 add_action('wp_ajax_edifice_product_revenue_delete', ['Edifice_Products_Digital', 'ajax_delete_revenue']);
 add_action('wp_ajax_edifice_listings_for_product',   ['Edifice_Products_Digital', 'ajax_listings_for_product']);
+add_action('wp_ajax_edifice_listings_for_channel',   ['Edifice_Products_Digital', 'ajax_listings_for_channel']);
 
 // AJAX handlers — product sync
 add_action('wp_ajax_edifice_sync_gumroad',          ['Edifice_Sync_Products', 'ajax_trigger_gumroad']);

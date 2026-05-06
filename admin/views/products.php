@@ -1,756 +1,641 @@
 <?php
-defined('ABSPATH') || exit;
+if (!defined('ABSPATH')) exit;
 
 $totals   = Edifice_Products_Digital::get_totals();
-$products = Edifice_Products_Digital::get_all_products();
+$channels = Edifice_Products_Digital::get_channels_summary();
 
-$fmt = fn($v, $cur='USD') => ($cur === 'NOK' ? 'kr ' : '$') . number_format((float)$v, 2);
-
-$platform_icons = [
-    'KDP'        => '📚',
-    'Gumroad'    => '🛒',
-    'PromptBase' => '🤖',
-    'Upwork'     => '💼',
-    'Etsy'       => '🏪',
+// Channel display config — order + icons + labels
+$channel_config = [
+    'PromptBase' => ['icon' => '🤖', 'label' => 'PromptBase', 'color' => '#6366f1'],
+    'Gumroad'    => ['icon' => '🛒', 'label' => 'Gumroad',    'color' => '#f59e0b'],
+    'KDP'        => ['icon' => '📚', 'label' => 'KDP',        'color' => '#10b981'],
+    'Upwork'     => ['icon' => '💼', 'label' => 'Upwork',     'color' => '#3b82f6'],
 ];
 
-$status_cfg = [
-    'live'           => ['Live',           'lh-badge--active'],
-    'pending_review' => ['Pending Review', 'lh-badge--pending'],
-    'scheduled'      => ['Scheduled',      'lh-badge--pending'],
-    'draft'          => ['Draft',          'lh-badge--inactive'],
-    'rejected'       => ['Rejected',       'lh-badge--overdue'],
-    'active'         => ['Aktiv',          'lh-badge--active'],
-    'draft'          => ['Utkast',         'lh-badge--inactive'],
-    'retired'        => ['Avsluttet',      'lh-badge--overdue'],
-];
-
-$type_labels = [
-    'ebook'       => 'E-bok',
-    'prompt-pack' => 'Prompt Pack',
-    'template'    => 'Template',
-    'report'      => 'Report',
-    'course'      => 'Kurs',
-    'service'     => 'Tjeneste',
-];
+$nonce = wp_create_nonce('edifice_nonce');
 ?>
 
-<!-- ═══════════════════════════════════════════════════════════
-     VIEW: PRODUCT LIST  (default)
-     ═══════════════════════════════════════════════════════════ -->
-<div id="products-list-view">
-  <div class="lh-wrap">
-
-    <div class="lh-header">
-      <h1>🛍️ Produkter &amp; Passiv inntekt</h1>
-      <div style="display:flex;gap:8px">
-        <button class="lh-btn lh-btn--ghost lh-btn--sm" id="btn-open-sync">🔄 Synk</button>
-        <button class="lh-btn lh-btn--primary" id="btn-add-product">+ Nytt produkt</button>
-      </div>
-    </div>
-
-    <!-- Stats -->
-    <div class="lh-stats">
-      <div class="lh-stat">
-        <span class="lh-stat__label">Denne måneden</span>
-        <span class="lh-stat__value">$<?= number_format((float)$totals['month'], 2) ?></span>
-      </div>
-      <div class="lh-stat">
-        <span class="lh-stat__label">YTD</span>
-        <span class="lh-stat__value">$<?= number_format((float)$totals['ytd'], 2) ?></span>
-      </div>
-      <div class="lh-stat">
-        <span class="lh-stat__label">All time</span>
-        <span class="lh-stat__value">$<?= number_format((float)$totals['all_time'], 2) ?></span>
-      </div>
-      <div class="lh-stat">
-        <span class="lh-stat__label">Live listings</span>
-        <span class="lh-stat__value"><?= (int)$totals['active_listings'] ?></span>
-      </div>
-    </div>
-
-    <!-- Sync panel -->
-    <div class="lh-card sync-panel" id="sync-panel" style="margin-bottom:20px;display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <h3 style="margin:0;font-size:15px;font-weight:600">🔄 Automatisk omsetningssynk</h3>
-        <button class="lh-btn lh-btn--ghost lh-btn--sm" id="btn-sync-panel-close">✕ Lukk</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div class="sync-platform-card">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <span style="font-size:18px">🛒</span><strong>Gumroad</strong>
-            <span class="lh-badge lh-badge--active" style="margin-left:auto;font-size:10px">API</span>
-          </div>
-          <p style="font-size:12px;color:#666;margin:0 0 10px">Synker daglig kl. 06:00 UTC via Gumroad API.</p>
-          <div id="gumroad-not-connected" style="display:none">
-            <button class="lh-btn lh-btn--secondary lh-btn--sm" id="btn-gumroad-connect">🔗 Koble til Gumroad</button>
-          </div>
-          <div id="gumroad-connected" style="display:none">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:12px;color:#16a34a;font-weight:600">✅ Koblet til</span>
-              <button class="lh-btn lh-btn--ghost lh-btn--sm" id="btn-gumroad-disconnect" style="font-size:11px;color:#dc2626;border-color:#dc2626">Koble fra</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <button class="lh-btn lh-btn--primary lh-btn--sm" id="btn-sync-gumroad">▶ Synk nå</button>
-              <span id="gumroad-sync-status" style="font-size:12px;color:#666"></span>
-            </div>
-          </div>
-          <div style="margin-top:6px;font-size:11px;color:#999">Sist synket: <span id="gumroad-last-sync">—</span></div>
-        </div>
-        <div class="sync-platform-card">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <span style="font-size:18px">🌐</span><strong>PromptBase · KDP · Upwork</strong>
-            <span class="lh-badge lh-badge--pending" style="margin-left:auto;font-size:10px">Chrome</span>
-          </div>
-          <p style="font-size:12px;color:#666;margin:0 0 10px">Cowork-agenten åpner dashboardene dine og henter tallene automatisk.</p>
-          <div style="display:flex;align-items:center;gap:8px">
-            <button class="lh-btn lh-btn--primary lh-btn--sm" id="btn-sync-chrome-now">▶ Kjør Chrome-sync nå</button>
-            <span id="chrome-sync-status" style="font-size:12px;color:#666"></span>
-          </div>
-          <div style="margin-top:6px;font-size:11px;color:#999">Sist synket: <span id="chrome-last-sync">—</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Product cards grid -->
-    <?php if (empty($products)): ?>
-      <div class="lh-card" style="padding:40px;text-align:center;color:#888">
-        Ingen produkter ennå. Klikk «+ Nytt produkt» for å komme i gang.
-      </div>
-    <?php else: ?>
-    <div class="products-grid">
-      <?php foreach ($products as $p):
-        $pid    = (int)$p['id'];
-        $sc     = $status_cfg[$p['status']] ?? ['Aktiv', 'lh-badge--active'];
-        $tlabel = $type_labels[$p['type']] ?? $p['type'];
-        $rev    = (float)$p['revenue_total'];
-        $lcount = (int)$p['listing_count'];
-      ?>
-      <div class="product-card" data-pid="<?= $pid ?>">
-        <div class="product-card__header">
-          <div class="product-card__brand"><?= esc_html($p['brand']) ?></div>
-          <span class="lh-badge <?= $sc[1] ?>"><?= $sc[0] ?></span>
-        </div>
-        <div class="product-card__name"><?= esc_html($p['name']) ?></div>
-        <div class="product-card__meta">
-          <span class="product-card__type"><?= esc_html($tlabel) ?></span>
-          <span class="product-card__listings"><?= $lcount ?> kanal<?= $lcount === 1 ? '' : 'er' ?></span>
-        </div>
-        <div class="product-card__revenue">
-          <span class="product-card__rev-value">$<?= number_format($rev, 2) ?></span>
-          <span class="product-card__rev-label">totalt</span>
-        </div>
-        <div class="product-card__actions">
-          <button class="lh-btn lh-btn--primary lh-btn--sm btn-view-product" data-pid="<?= $pid ?>">
-            Se kanaler →
-          </button>
-          <button class="lh-btn lh-btn--sm lh-btn--edit btn-edit-product"
-            data-id="<?= $pid ?>"
-            data-name="<?= esc_attr($p['name']) ?>"
-            data-type="<?= esc_attr($p['type']) ?>"
-            data-brand="<?= esc_attr($p['brand']) ?>"
-            data-status="<?= esc_attr($p['status']) ?>"
-            data-description="<?= esc_attr($p['description'] ?? '') ?>">Rediger</button>
-          <button class="lh-btn lh-btn--sm lh-btn--danger btn-delete-product" data-id="<?= $pid ?>">Slett</button>
-        </div>
-      </div>
-      <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════
-     VIEW: PRODUCT DETAIL
-     ═══════════════════════════════════════════════════════════ -->
-<div id="products-detail-view" style="display:none">
-  <div class="lh-wrap">
-
-    <div class="lh-header">
-      <div style="display:flex;align-items:center;gap:12px">
-        <button class="lh-btn lh-btn--secondary" id="btn-back-products">← Tilbake</button>
-        <h1 id="detail-product-name" style="margin:0"></h1>
-        <span id="detail-product-brand" class="lh-badge lh-badge--inactive" style="font-size:12px"></span>
-      </div>
-      <button class="lh-btn lh-btn--primary" id="btn-add-listing-detail">+ Legg til kanal</button>
-    </div>
-
-    <!-- Product stats -->
-    <div class="lh-stats" id="detail-stats">
-      <div class="lh-stat">
-        <span class="lh-stat__label">Totalt salg</span>
-        <span class="lh-stat__value" id="detail-stat-sales">0</span>
-      </div>
-      <div class="lh-stat">
-        <span class="lh-stat__label">Total inntekt</span>
-        <span class="lh-stat__value" id="detail-stat-revenue">$0.00</span>
-      </div>
-      <div class="lh-stat">
-        <span class="lh-stat__label">Aktive kanaler</span>
-        <span class="lh-stat__value" id="detail-stat-channels">0</span>
-      </div>
-    </div>
-
-    <!-- Channels / listings table -->
-    <div class="lh-card">
-      <table class="lh-table" id="detail-listings-table">
-        <thead>
-          <tr>
-            <th>Kanal / Plattform</th>
-            <th>Pris</th>
-            <th>Status</th>
-            <th>Salg</th>
-            <th>Inntekt</th>
-            <th>Sist synkronisert</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="detail-listings-body">
-          <tr><td colspan="7" style="text-align:center;padding:32px;color:#888">Laster...</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Description -->
-    <div id="detail-description" style="margin-top:16px;color:#666;font-size:13px;font-style:italic"></div>
-
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════
-     MODALS
-     ═══════════════════════════════════════════════════════════ -->
-
-<!-- Product modal -->
-<div class="lh-modal-overlay" id="product-modal" style="display:none">
-  <div class="lh-modal">
-    <div class="lh-modal__header">
-      <h2 id="product-modal-title">Nytt produkt</h2>
-      <button class="lh-modal__close" data-modal="product-modal">&times;</button>
-    </div>
-    <form id="product-form">
-      <input type="hidden" name="id" id="pf-id">
-      <div class="lh-form-row">
-        <label>Navn *</label>
-        <input type="text" name="name" id="pf-name" required>
-      </div>
-      <div class="lh-form-row lh-form-row--2col">
-        <div>
-          <label>Type</label>
-          <select name="type" id="pf-type">
-            <option value="ebook">E-bok</option>
-            <option value="prompt-pack">Prompt Pack</option>
-            <option value="template">Template</option>
-            <option value="report">Report</option>
-            <option value="course">Kurs</option>
-            <option value="service">Tjeneste</option>
-          </select>
-        </div>
-        <div>
-          <label>Brand</label>
-          <select name="brand" id="pf-brand">
-            <option value="The Direction Gap">The Direction Gap</option>
-            <option value="StrategistKit">StrategistKit</option>
-            <option value="LAKI">LAKI</option>
-          </select>
-        </div>
-      </div>
-      <div class="lh-form-row">
-        <label>Status</label>
-        <select name="status" id="pf-status">
-          <option value="active">Aktiv</option>
-          <option value="draft">Utkast</option>
-          <option value="retired">Avsluttet</option>
-        </select>
-      </div>
-      <div class="lh-form-row">
-        <label>Beskrivelse</label>
-        <textarea name="description" id="pf-description" rows="3"></textarea>
-      </div>
-      <div class="lh-form-actions">
-        <button type="button" class="lh-btn lh-btn--secondary" data-modal="product-modal">Avbryt</button>
-        <button type="submit" class="lh-btn lh-btn--primary">Lagre</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Listing modal -->
-<div class="lh-modal-overlay" id="listing-modal" style="display:none">
-  <div class="lh-modal">
-    <div class="lh-modal__header">
-      <h2 id="listing-modal-title">Ny kanal</h2>
-      <button class="lh-modal__close" data-modal="listing-modal">&times;</button>
-    </div>
-    <form id="listing-form">
-      <input type="hidden" name="id" id="lf-id">
-      <input type="hidden" name="product_id" id="lf-product_id">
-      <div class="lh-form-row">
-        <label>Plattform *</label>
-        <select name="platform" id="lf-platform">
-          <option value="Gumroad">Gumroad</option>
-          <option value="KDP">Amazon KDP</option>
-          <option value="PromptBase">PromptBase</option>
-          <option value="Upwork">Upwork Project Catalog</option>
-          <option value="Etsy">Etsy</option>
-        </select>
-      </div>
-      <div class="lh-form-row">
-        <label>URL</label>
-        <input type="url" name="listing_url" id="lf-listing_url" placeholder="https://...">
-      </div>
-      <div class="lh-form-row lh-form-row--2col">
-        <div>
-          <label>Pris</label>
-          <input type="number" name="price" id="lf-price" step="0.01" min="0">
-        </div>
-        <div>
-          <label>Valuta</label>
-          <select name="currency" id="lf-currency">
-            <option value="USD">USD</option>
-            <option value="NOK">NOK</option>
-            <option value="EUR">EUR</option>
-          </select>
-        </div>
-      </div>
-      <div class="lh-form-row">
-        <label>Status</label>
-        <select name="listing_status" id="lf-listing_status">
-          <option value="live">Live</option>
-          <option value="pending_review">Pending Review</option>
-          <option value="scheduled">Scheduled</option>
-          <option value="draft">Draft</option>
-          <option value="rejected">Rejected</option>
-        </select>
-      </div>
-      <div class="lh-form-row">
-        <label>Notater</label>
-        <textarea name="notes" id="lf-notes" rows="2"></textarea>
-      </div>
-      <div class="lh-form-actions">
-        <button type="button" class="lh-btn lh-btn--secondary" data-modal="listing-modal">Avbryt</button>
-        <button type="submit" class="lh-btn lh-btn--primary">Lagre</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Revenue modal -->
-<div class="lh-modal-overlay" id="revenue-modal" style="display:none">
-  <div class="lh-modal">
-    <div class="lh-modal__header">
-      <h2 id="revenue-modal-title">Registrer inntekt</h2>
-      <button class="lh-modal__close" data-modal="revenue-modal">&times;</button>
-    </div>
-    <form id="revenue-form">
-      <input type="hidden" name="id" id="rf-id">
-      <input type="hidden" name="listing_id" id="rf-listing_id">
-      <div class="lh-form-row">
-        <label>Dato</label>
-        <input type="date" name="snapshot_date" id="rf-snapshot_date" value="<?= date('Y-m-d') ?>">
-      </div>
-      <div class="lh-form-row lh-form-row--2col">
-        <div>
-          <label>Inntekt</label>
-          <input type="number" name="revenue" id="rf-revenue" step="0.01" min="0" value="0">
-        </div>
-        <div>
-          <label>Valuta</label>
-          <select name="currency" id="rf-currency">
-            <option value="USD">USD</option>
-            <option value="NOK">NOK</option>
-            <option value="EUR">EUR</option>
-          </select>
-        </div>
-      </div>
-      <div class="lh-form-row">
-        <label>Antall salg</label>
-        <input type="number" name="sales_count" id="rf-sales_count" min="0" value="0">
-      </div>
-      <div class="lh-form-row">
-        <label>Notater</label>
-        <textarea name="notes" id="rf-notes" rows="2"></textarea>
-      </div>
-      <div class="lh-form-actions">
-        <button type="button" class="lh-btn lh-btn--secondary" data-modal="revenue-modal">Avbryt</button>
-        <button type="submit" class="lh-btn lh-btn--primary">Lagre</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <style>
-/* ── Product cards grid ──────────────────────────────────── */
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  padding: 0;
+/* ── Channel cards ── */
+.edi-channel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+    margin-bottom: 32px;
 }
-.product-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  transition: box-shadow .15s, transform .15s;
-  cursor: default;
+.edi-channel-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px 22px 18px;
+    cursor: pointer;
+    transition: box-shadow .15s, transform .1s;
+    position: relative;
+    overflow: hidden;
 }
-.product-card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,.08);
-  transform: translateY(-1px);
+.edi-channel-card:hover {
+    box-shadow: 0 6px 18px rgba(0,0,0,.1);
+    transform: translateY(-2px);
 }
-.product-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.edi-channel-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--ch-color, #64748b);
 }
-.product-card__brand {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .8px;
-  color: #6b7280;
+.edi-channel-card .ch-icon  { font-size: 28px; line-height: 1; margin-bottom: 10px; }
+.edi-channel-card .ch-label { font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.edi-channel-card .ch-stat-row { display: flex; justify-content: space-between; margin-top: 14px; gap: 8px; }
+.edi-channel-card .ch-stat { flex: 1; }
+.edi-channel-card .ch-stat .val { font-size: 20px; font-weight: 700; color: #1e293b; line-height: 1.1; }
+.edi-channel-card .ch-stat .lbl { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.edi-channel-card .ch-listings-badge {
+    display: inline-block;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 12px;
 }
-.product-card__name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #1e293b;
-  line-height: 1.3;
+
+/* ── Summary bar ── */
+.edi-summary-bar {
+    display: flex;
+    gap: 24px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 24px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
 }
-.product-card__meta {
-  display: flex;
-  gap: 10px;
-  font-size: 12px;
-  color: #9ca3af;
+.edi-summary-bar .sb-item { display: flex; flex-direction: column; }
+.edi-summary-bar .sb-val  { font-size: 22px; font-weight: 700; color: #1e293b; }
+.edi-summary-bar .sb-lbl  { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+.edi-summary-bar .sb-divider { width: 1px; background: #e2e8f0; align-self: stretch; }
+
+/* ── Drill-down view ── */
+#ch-detail-view { display: none; }
+.edi-back-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: none; border: none; cursor: pointer;
+    color: #3b82f6; font-size: 14px; font-weight: 600;
+    padding: 0; margin-bottom: 20px;
 }
-.product-card__type { background: #f3f4f6; padding: 2px 8px; border-radius: 4px; }
-.product-card__listings { background: #eff6ff; color: #3b82f6; padding: 2px 8px; border-radius: 4px; }
-.product-card__revenue {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 4px;
-  padding-top: 10px;
-  border-top: 1px solid #f3f4f6;
+.edi-back-btn:hover { text-decoration: underline; }
+.edi-detail-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 22px;
 }
-.product-card__rev-value { font-size: 22px; font-weight: 800; color: #1e293b; }
-.product-card__rev-label { font-size: 12px; color: #9ca3af; }
-.product-card__actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 4px;
+.edi-detail-header .dh-icon  { font-size: 36px; }
+.edi-detail-header .dh-title { font-size: 22px; font-weight: 700; color: #1e293b; }
+.edi-detail-header .dh-sub   { font-size: 13px; color: #64748b; margin-top: 3px; }
+
+/* Listings table */
+.edi-table-wrap { overflow-x: auto; }
+.edi-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
 }
-/* ── Detail view listing rows ────────────────────────────── */
-.listing-row-icon { font-size: 18px; margin-right: 6px; }
-.listing-platform-name { font-weight: 600; }
-.listing-url-link { font-size: 11px; color: #6b7280; margin-left: 6px; }
+.edi-table th {
+    text-align: left; padding: 10px 14px;
+    background: #f8fafc; color: #64748b;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    border-bottom: 1px solid #e2e8f0;
+}
+.edi-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    color: #1e293b;
+}
+.edi-table tr:last-child td { border-bottom: none; }
+.edi-table tr:hover td { background: #f8fafc; }
+.edi-status-badge {
+    display: inline-block;
+    padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+}
+.status-live    { background: #dcfce7; color: #166534; }
+.status-pending { background: #fef9c3; color: #854d0e; }
+.status-other   { background: #f1f5f9; color: #475569; }
+.edi-link { color: #3b82f6; text-decoration: none; }
+.edi-link:hover { text-decoration: underline; }
+
+/* Add product/listing buttons */
+.edi-action-bar {
+    display: flex; gap: 10px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+}
+.edi-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 7px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; text-decoration: none;
+    transition: opacity .15s;
+}
+.edi-btn:hover { opacity: .85; }
+.edi-btn-primary { background: #3b82f6; color: #fff; }
+.edi-btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+/* Loading spinner */
+.edi-spinner { display: none; color: #64748b; font-size: 13px; padding: 30px 0; text-align: center; }
+
+/* Empty state */
+.edi-empty { text-align: center; padding: 48px 0; color: #94a3b8; font-size: 14px; }
+
+/* Modals (reused from original) */
+.edi-modal-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.45); z-index:9998;
+    align-items:center; justify-content:center;
+}
+.edi-modal-overlay.active { display:flex; }
+.edi-modal {
+    background:#fff; border-radius:10px; padding:28px 32px;
+    width:560px; max-width:95vw; max-height:90vh; overflow-y:auto;
+    position:relative; z-index:9999;
+}
+.edi-modal h3 { margin:0 0 20px; font-size:17px; color:#1e293b; }
+.edi-modal label { display:block; font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; }
+.edi-modal input, .edi-modal select, .edi-modal textarea {
+    width:100%; padding:8px 10px; border:1px solid #e2e8f0;
+    border-radius:6px; font-size:13px; margin-bottom:14px; box-sizing:border-box;
+}
+.edi-modal textarea { height:80px; resize:vertical; }
+.edi-modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
+.edi-modal-close {
+    position:absolute; top:14px; right:18px;
+    background:none; border:none; font-size:20px; cursor:pointer; color:#94a3b8;
+}
+.edi-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+/* Revenue section inside detail */
+.edi-revenue-section {
+    margin-top: 32px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px 22px;
+}
+.edi-revenue-section h3 { margin: 0 0 16px; font-size: 15px; color: #1e293b; }
 </style>
 
+<div class="wrap" style="max-width:1100px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+        <h1 style="margin:0; font-size:22px; color:#1e293b;">🛍️ Produkter &amp; Kanaler</h1>
+        <div class="edi-action-bar" style="margin:0;">
+            <button class="edi-btn edi-btn-secondary" id="btn-add-product">+ Nytt produkt</button>
+            <button class="edi-btn edi-btn-primary"   id="btn-add-listing">+ Ny listing</button>
+            <button class="edi-btn edi-btn-secondary" id="btn-sync-gumroad" title="Synk Gumroad-inntekter">🔄 Gumroad-sync</button>
+        </div>
+    </div>
+
+    <!-- Summary bar -->
+    <div class="edi-summary-bar">
+        <div class="sb-item">
+            <span class="sb-val">$<?= number_format((float)$totals['all_time'], 2) ?></span>
+            <span class="sb-lbl">Total inntekt</span>
+        </div>
+        <div class="sb-divider"></div>
+        <div class="sb-item">
+            <span class="sb-val">$<?= number_format((float)$totals['month'], 2) ?></span>
+            <span class="sb-lbl">Denne måneden</span>
+        </div>
+        <div class="sb-divider"></div>
+        <div class="sb-item">
+            <span class="sb-val">$<?= number_format((float)$totals['ytd'], 2) ?></span>
+            <span class="sb-lbl">Hittil i år</span>
+        </div>
+        <div class="sb-divider"></div>
+        <div class="sb-item">
+            <span class="sb-val"><?= (int)$totals['active_listings'] ?></span>
+            <span class="sb-lbl">Aktive listings</span>
+        </div>
+    </div>
+
+    <!-- Channel grid (top-level view) -->
+    <div id="ch-list-view">
+        <div class="edi-channel-grid">
+            <?php foreach ($channel_config as $platform => $cfg):
+                $ch    = $channels[$platform] ?? null;
+                $count = $ch ? (int)$ch['listing_count'] : 0;
+                $month = $ch ? (float)$ch['month_revenue'] : 0;
+                $total = $ch ? (float)$ch['total_revenue']  : 0;
+            ?>
+            <div class="edi-channel-card"
+                 style="--ch-color: <?= esc_attr($cfg['color']) ?>;"
+                 data-platform="<?= esc_attr($platform) ?>"
+                 onclick="ediOpenChannel('<?= esc_js($platform) ?>', '<?= esc_js($cfg['icon']) ?>')">
+                <div class="ch-icon"><?= $cfg['icon'] ?></div>
+                <div class="ch-label"><?= esc_html($cfg['label']) ?></div>
+                <div class="ch-stat-row">
+                    <div class="ch-stat">
+                        <div class="val">$<?= number_format($month, 2) ?></div>
+                        <div class="lbl">Denne mnd</div>
+                    </div>
+                    <div class="ch-stat">
+                        <div class="val">$<?= number_format($total, 2) ?></div>
+                        <div class="lbl">Totalt</div>
+                    </div>
+                </div>
+                <span class="ch-listings-badge"><?= $count ?> listing<?= $count !== 1 ? 's' : '' ?></span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- Channel drill-down view -->
+    <div id="ch-detail-view">
+        <button class="edi-back-btn" onclick="ediBackToChannels()">← Alle kanaler</button>
+        <div class="edi-detail-header">
+            <div class="dh-icon" id="ch-detail-icon"></div>
+            <div>
+                <div class="dh-title" id="ch-detail-title"></div>
+                <div class="dh-sub"   id="ch-detail-sub"></div>
+            </div>
+        </div>
+
+        <div class="edi-spinner" id="ch-spinner">Laster listings…</div>
+
+        <div id="ch-detail-content"></div>
+    </div>
+</div>
+
+<!-- ── Modal: Add/Edit product ── -->
+<div class="edi-modal-overlay" id="modal-product">
+    <div class="edi-modal">
+        <button class="edi-modal-close" onclick="ediCloseModal('modal-product')">×</button>
+        <h3 id="modal-product-title">Nytt produkt</h3>
+        <input type="hidden" id="prod-id" value="">
+        <label>Produktnavn</label>
+        <input type="text" id="prod-name" placeholder="f.eks. The Direction Gap">
+        <div class="edi-row-2">
+            <div>
+                <label>Brand / nisje</label>
+                <input type="text" id="prod-brand" placeholder="f.eks. Direction Gap">
+            </div>
+            <div>
+                <label>Type</label>
+                <select id="prod-type">
+                    <option value="ebook">E-bok</option>
+                    <option value="prompt_pack">Prompt Pack</option>
+                    <option value="agent_skill">Agent Skill</option>
+                    <option value="template">Template</option>
+                    <option value="course">Kurs</option>
+                    <option value="other">Annet</option>
+                </select>
+            </div>
+        </div>
+        <label>Beskrivelse</label>
+        <textarea id="prod-description" placeholder="Kort beskrivelse…"></textarea>
+        <label>Status</label>
+        <select id="prod-status">
+            <option value="active">Aktiv</option>
+            <option value="draft">Utkast</option>
+            <option value="archived">Arkivert</option>
+        </select>
+        <div class="edi-modal-actions">
+            <button class="edi-btn edi-btn-secondary" onclick="ediCloseModal('modal-product')">Avbryt</button>
+            <button class="edi-btn edi-btn-primary" onclick="ediSaveProduct()">Lagre</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Add/Edit listing ── -->
+<div class="edi-modal-overlay" id="modal-listing">
+    <div class="edi-modal">
+        <button class="edi-modal-close" onclick="ediCloseModal('modal-listing')">×</button>
+        <h3 id="modal-listing-title">Ny listing</h3>
+        <input type="hidden" id="lst-id" value="">
+        <label>Produkt</label>
+        <select id="lst-product-id">
+            <option value="">Velg produkt…</option>
+            <?php
+            $all_products = Edifice_Products_Digital::get_all_products();
+            foreach ($all_products as $prod):
+            ?>
+            <option value="<?= (int)$prod['id'] ?>"><?= esc_html($prod['name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <div class="edi-row-2">
+            <div>
+                <label>Plattform / kanal</label>
+                <select id="lst-platform">
+                    <option value="PromptBase">PromptBase</option>
+                    <option value="Gumroad">Gumroad</option>
+                    <option value="KDP">KDP</option>
+                    <option value="Upwork">Upwork</option>
+                    <option value="Etsy">Etsy</option>
+                    <option value="Other">Annet</option>
+                </select>
+            </div>
+            <div>
+                <label>Status</label>
+                <select id="lst-status">
+                    <option value="live">Live</option>
+                    <option value="pending_review">Pending review</option>
+                    <option value="draft">Utkast</option>
+                    <option value="archived">Arkivert</option>
+                </select>
+            </div>
+        </div>
+        <label>Listing URL</label>
+        <input type="url" id="lst-url" placeholder="https://…">
+        <div class="edi-row-2">
+            <div>
+                <label>Pris (USD)</label>
+                <input type="number" id="lst-price" step="0.01" min="0" placeholder="0.00">
+            </div>
+            <div>
+                <label>Valuta</label>
+                <select id="lst-currency">
+                    <option value="USD">USD</option>
+                    <option value="NOK">NOK</option>
+                    <option value="EUR">EUR</option>
+                </select>
+            </div>
+        </div>
+        <label>Notater</label>
+        <textarea id="lst-notes" placeholder="Valgfritt…"></textarea>
+        <div class="edi-modal-actions">
+            <button class="edi-btn edi-btn-secondary" onclick="ediCloseModal('modal-listing')">Avbryt</button>
+            <button class="edi-btn edi-btn-primary" onclick="ediSaveListing()">Lagre</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Add revenue entry ── -->
+<div class="edi-modal-overlay" id="modal-revenue">
+    <div class="edi-modal">
+        <button class="edi-modal-close" onclick="ediCloseModal('modal-revenue')">×</button>
+        <h3>Legg til inntektsoppføring</h3>
+        <input type="hidden" id="rev-listing-id" value="">
+        <div class="edi-row-2">
+            <div>
+                <label>Dato</label>
+                <input type="date" id="rev-date" value="<?= date('Y-m-d') ?>">
+            </div>
+            <div>
+                <label>Inntekt (USD)</label>
+                <input type="number" id="rev-revenue" step="0.01" min="0" placeholder="0.00">
+            </div>
+        </div>
+        <div class="edi-row-2">
+            <div>
+                <label>Antall salg</label>
+                <input type="number" id="rev-sales" min="0" placeholder="0">
+            </div>
+            <div>
+                <label>Valuta</label>
+                <select id="rev-currency">
+                    <option value="USD">USD</option>
+                    <option value="NOK">NOK</option>
+                </select>
+            </div>
+        </div>
+        <label>Notater</label>
+        <textarea id="rev-notes" placeholder="Valgfritt…"></textarea>
+        <div class="edi-modal-actions">
+            <button class="edi-btn edi-btn-secondary" onclick="ediCloseModal('modal-revenue')">Avbryt</button>
+            <button class="edi-btn edi-btn-primary" onclick="ediSaveRevenue()">Lagre</button>
+        </div>
+    </div>
+</div>
+
 <script>
-(function($){
+(function($) {
+    const NONCE = '<?= $nonce ?>';
+    let currentPlatform = null;
 
-  /* ── Helpers ────────────────────────────────────────────── */
-  var PLATFORM_ICONS = {
-    'KDP':'📚','Gumroad':'🛒','PromptBase':'🤖','Upwork':'💼','Etsy':'🏪'
-  };
-  var STATUS_CFG = {
-    'live':           {label:'Live',           cls:'lh-badge--active'},
-    'pending_review': {label:'Pending Review', cls:'lh-badge--pending'},
-    'scheduled':      {label:'Scheduled',      cls:'lh-badge--pending'},
-    'draft':          {label:'Draft',          cls:'lh-badge--inactive'},
-    'rejected':       {label:'Rejected',       cls:'lh-badge--overdue'}
-  };
-
-  function openModal(id)  { $('#'+id).fadeIn(150); }
-  function closeModal(id) { $('#'+id).fadeOut(150); }
-
-  $(document).on('click', '.lh-modal__close, [data-modal]', function(){
-    closeModal($(this).data('modal'));
-  });
-  $(document).on('click', '.lh-modal-overlay', function(e){
-    if ($(e.target).hasClass('lh-modal-overlay')) closeModal($(this).attr('id'));
-  });
-
-  function ajax(action, data, cb) {
-    data.action = action;
-    data.nonce  = Edifice.nonce;
-    $.post(Edifice.ajax_url, data)
-      .done(function(r){ if (r.success) cb(r.data); else alert('Feil: ' + JSON.stringify(r.data)); })
-      .fail(function()  { alert('AJAX-feil. Prøv igjen.'); });
-  }
-
-  $.fn.serializeObject = function(){
-    var o={};
-    $.each(this.serializeArray(), function(){ o[this.name]=this.value; });
-    return o;
-  };
-
-  /* ── View switching ─────────────────────────────────────── */
-  var currentPid = null;
-
-  function showListView() {
-    $('#products-detail-view').hide();
-    $('#products-list-view').show();
-    currentPid = null;
-  }
-
-  function showDetailView(pid) {
-    currentPid = pid;
-    $('#products-list-view').hide();
-    $('#products-detail-view').show();
-    loadDetail(pid);
-  }
-
-  function loadDetail(pid) {
-    // Find product in PHP-rendered data
-    var card = $('.product-card[data-pid="'+pid+'"]');
-    var name  = card.find('.product-card__name').text();
-    var brand = card.find('.product-card__brand').text();
-    var desc  = card.data('description') || '';
-
-    $('#detail-product-name').text(name);
-    $('#detail-product-brand').text(brand);
-    $('#detail-description').text(desc);
-    $('#detail-listings-body').html('<tr><td colspan="7" style="text-align:center;padding:24px;color:#888">Laster kanaler...</td></tr>');
-
-    // Fetch listings via AJAX
-    ajax('edifice_listings_for_product', { pid: pid }, function(data) {
-      renderListings(data.listings || []);
-    });
-  }
-
-  function renderListings(listings) {
-    var $body = $('#detail-listings-body');
-    $body.empty();
-
-    if (!listings.length) {
-      $body.html('<tr><td colspan="7" style="text-align:center;padding:32px;color:#888">Ingen kanaler ennå. Klikk «+ Legg til kanal».</td></tr>');
-      $('#detail-stat-sales').text('0');
-      $('#detail-stat-revenue').text('$0.00');
-      $('#detail-stat-channels').text('0');
-      return;
+    // ── AJAX helper ──
+    function ajax(action, data, cb) {
+        $.post(ajaxurl, Object.assign({ action, nonce: NONCE }, data), function(res) {
+            if (res.success) { cb(res.data); }
+            else { alert('Feil: ' + (res.data?.message || action)); }
+        });
     }
 
-    var totalSales = 0, totalRev = 0, liveCount = 0;
+    // ── Channel navigation ──
+    window.ediOpenChannel = function(platform, icon) {
+        currentPlatform = platform;
+        document.getElementById('ch-list-view').style.display   = 'none';
+        document.getElementById('ch-detail-view').style.display = 'block';
+        document.getElementById('ch-detail-icon').textContent   = icon;
+        document.getElementById('ch-detail-title').textContent  = platform;
+        document.getElementById('ch-detail-content').innerHTML  = '';
+        document.getElementById('ch-spinner').style.display     = 'block';
+        document.getElementById('ch-detail-sub').textContent    = 'Laster…';
 
-    listings.forEach(function(l) {
-      var icon   = PLATFORM_ICONS[l.platform] || '🔗';
-      var sc     = STATUS_CFG[l.listing_status] || {label: l.listing_status, cls: 'lh-badge--inactive'};
-      var rev    = parseFloat(l.revenue_total) || 0;
-      var sales  = parseInt(l.sales_total) || 0;
-      totalSales += sales;
-      totalRev   += rev;
-      if (l.listing_status === 'live') liveCount++;
+        ajax('edifice_listings_for_channel', { platform }, function(data) {
+            document.getElementById('ch-spinner').style.display = 'none';
+            renderChannelListings(platform, data.listings || []);
+        });
+    };
 
-      var urlHtml = l.listing_url
-        ? '<a href="'+l.listing_url+'" target="_blank" class="listing-url-link">↗ Åpne</a>'
-        : '';
+    window.ediBackToChannels = function() {
+        currentPlatform = null;
+        document.getElementById('ch-detail-view').style.display = 'none';
+        document.getElementById('ch-list-view').style.display   = 'block';
+    };
 
-      $body.append(
-        '<tr>' +
-        '<td><span class="listing-row-icon">'+icon+'</span>' +
-          '<span class="listing-platform-name">'+l.platform+'</span>' + urlHtml +
-          (l.notes ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px">'+$('<span>').text(l.notes).html()+'</div>' : '') +
-        '</td>' +
-        '<td>'+l.currency+' '+parseFloat(l.price).toFixed(2)+'</td>' +
-        '<td><span class="lh-badge '+sc.cls+'">'+sc.label+'</span></td>' +
-        '<td>'+sales+'</td>' +
-        '<td>$'+rev.toFixed(2)+'</td>' +
-        '<td>'+(l.last_synced ? l.last_synced.substr(0,10) : '—')+'</td>' +
-        '<td class="lh-actions">' +
-          '<button class="lh-btn lh-btn--sm btn-add-revenue-detail" data-lid="'+l.id+'" data-lname="'+l.platform+'">+ Inntekt</button> ' +
-          '<button class="lh-btn lh-btn--sm lh-btn--edit btn-edit-listing-detail" '+
-            'data-id="'+l.id+'" data-product_id="'+l.product_id+'" '+
-            'data-platform="'+l.platform+'" data-listing_url="'+(l.listing_url||'')+'" '+
-            'data-price="'+l.price+'" data-currency="'+l.currency+'" '+
-            'data-listing_status="'+l.listing_status+'" data-notes="'+(l.notes||'')+'">Rediger</button> ' +
-          '<button class="lh-btn lh-btn--sm lh-btn--danger btn-delete-listing-detail" data-id="'+l.id+'">Slett</button>' +
-        '</td>' +
-        '</tr>'
-      );
-    });
+    function renderChannelListings(platform, listings) {
+        const sub = document.getElementById('ch-detail-sub');
+        sub.textContent = listings.length + ' listing' + (listings.length !== 1 ? 's' : '');
 
-    $('#detail-stat-sales').text(totalSales);
-    $('#detail-stat-revenue').text('$'+totalRev.toFixed(2));
-    $('#detail-stat-channels').text(liveCount + ' live');
-  }
+        if (!listings.length) {
+            document.getElementById('ch-detail-content').innerHTML =
+                '<div class="edi-empty">Ingen listings registrert for ' + platform + ' ennå.</div>';
+            return;
+        }
 
-  /* ── Navigation ─────────────────────────────────────────── */
-  $(document).on('click', '.btn-view-product', function(){
-    showDetailView($(this).data('pid'));
-  });
+        const statusBadge = (s) => {
+            const cls = s === 'live' ? 'status-live' : (s === 'pending_review' ? 'status-pending' : 'status-other');
+            const label = { live: 'Live', pending_review: 'Pending', draft: 'Utkast', archived: 'Arkivert' }[s] || s;
+            return `<span class="edi-status-badge ${cls}">${label}</span>`;
+        };
 
-  $('#btn-back-products').on('click', function(){
-    showListView();
-  });
+        let html = `
+        <div class="edi-table-wrap">
+        <table class="edi-table">
+            <thead>
+                <tr>
+                    <th>Produkt</th>
+                    <th>Tittel / URL</th>
+                    <th>Pris</th>
+                    <th>Status</th>
+                    <th>Mnd inntekt</th>
+                    <th>Total</th>
+                    <th>Sist synk</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>`;
 
-  /* ── Product CRUD ───────────────────────────────────────── */
-  $('#btn-add-product').on('click', function(){
-    $('#product-modal-title').text('Nytt produkt');
-    $('#product-form')[0].reset();
-    $('#pf-id').val('');
-    openModal('product-modal');
-  });
+        listings.forEach(l => {
+            const monthRev = parseFloat(l.month_revenue || 0).toFixed(2);
+            const totalRev = parseFloat(l.revenue_total || 0).toFixed(2);
+            const urlCell  = l.listing_url
+                ? `<a class="edi-link" href="${l.listing_url}" target="_blank">${l.listing_url.replace(/^https?:\/\//, '').substring(0, 42)}…</a>`
+                : '<span style="color:#94a3b8">—</span>';
 
-  $(document).on('click', '.btn-edit-product', function(e){
-    e.stopPropagation();
-    var d = $(this).data();
-    $('#product-modal-title').text('Rediger produkt');
-    $('#pf-id').val(d.id); $('#pf-name').val(d.name); $('#pf-type').val(d.type);
-    $('#pf-brand').val(d.brand); $('#pf-status').val(d.status); $('#pf-description').val(d.description);
-    openModal('product-modal');
-  });
+            html += `
+            <tr>
+                <td><strong>${escHtml(l.product_name || '—')}</strong><br>
+                    <span style="font-size:11px;color:#94a3b8">${escHtml(l.product_brand || '')}</span></td>
+                <td>${urlCell}</td>
+                <td>$${parseFloat(l.price || 0).toFixed(2)}</td>
+                <td>${statusBadge(l.listing_status)}</td>
+                <td>$${monthRev}</td>
+                <td>$${totalRev}</td>
+                <td style="font-size:11px;color:#94a3b8">${l.last_synced || '—'}</td>
+                <td>
+                    <button class="edi-btn edi-btn-secondary" style="padding:4px 10px;font-size:11px;"
+                        onclick="ediEditListing(${JSON.stringify(l).split('"').join('&quot;')})">✏️</button>
+                    <button class="edi-btn edi-btn-secondary" style="padding:4px 10px;font-size:11px;"
+                        onclick="ediAddRevenue(${l.id})">＋$</button>
+                </td>
+            </tr>`;
+        });
 
-  $('#product-form').on('submit', function(e){
-    e.preventDefault();
-    ajax('edifice_product_save', $(this).serializeObject(), function(){ location.reload(); });
-  });
-
-  $(document).on('click', '.btn-delete-product', function(e){
-    e.stopPropagation();
-    if (!confirm('Slette produktet og alle tilknyttede kanaler og inntektsdata?')) return;
-    ajax('edifice_product_delete', { id: $(this).data('id') }, function(){ location.reload(); });
-  });
-
-  /* ── Listing CRUD (from detail view) ────────────────────── */
-  $('#btn-add-listing-detail').on('click', function(){
-    $('#listing-modal-title').text('Ny kanal');
-    $('#listing-form')[0].reset();
-    $('#lf-id').val(''); $('#lf-product_id').val(currentPid);
-    openModal('listing-modal');
-  });
-
-  $(document).on('click', '.btn-edit-listing-detail', function(){
-    var d = $(this).data();
-    $('#listing-modal-title').text('Rediger kanal');
-    $('#lf-id').val(d.id); $('#lf-product_id').val(d.product_id);
-    $('#lf-platform').val(d.platform); $('#lf-listing_url').val(d.listing_url);
-    $('#lf-price').val(d.price); $('#lf-currency').val(d.currency);
-    $('#lf-listing_status').val(d.listing_status); $('#lf-notes').val(d.notes);
-    openModal('listing-modal');
-  });
-
-  $('#listing-form').on('submit', function(e){
-    e.preventDefault();
-    ajax('edifice_listing_save', $(this).serializeObject(), function(){
-      closeModal('listing-modal');
-      if (currentPid) loadDetail(currentPid);
-    });
-  });
-
-  $(document).on('click', '.btn-delete-listing-detail', function(){
-    if (!confirm('Slette denne kanalen og all inntektshistorikk?')) return;
-    var lid = $(this).data('id');
-    ajax('edifice_listing_delete', { id: lid }, function(){
-      if (currentPid) loadDetail(currentPid);
-    });
-  });
-
-  /* ── Revenue entry ──────────────────────────────────────── */
-  $(document).on('click', '.btn-add-revenue-detail', function(){
-    $('#revenue-modal-title').text('Inntekt — ' + $(this).data('lname'));
-    $('#revenue-form')[0].reset();
-    $('#rf-id').val(''); $('#rf-listing_id').val($(this).data('lid'));
-    $('#rf-snapshot_date').val(new Date().toISOString().split('T')[0]);
-    openModal('revenue-modal');
-  });
-
-  $('#revenue-form').on('submit', function(e){
-    e.preventDefault();
-    ajax('edifice_product_revenue_save', $(this).serializeObject(), function(){
-      closeModal('revenue-modal');
-      if (currentPid) loadDetail(currentPid);
-    });
-  });
-
-
-  // ── Sync panel ───────────────────────────────────────────────────────────
-
-  // Load settings on page load + check OAuth result in URL
-  function loadSyncSettings() {
-    ajax('edifice_sync_get_settings', {}, function(d) {
-      if (d.gumroad_connected) {
-        $('#gumroad-connected').show();
-        $('#gumroad-not-connected').hide();
-      } else {
-        $('#gumroad-connected').hide();
-        $('#gumroad-not-connected').show();
-      }
-      $('#gumroad-last-sync').text(d.last_gumroad || '—');
-      $('#chrome-last-sync').text(d.last_chrome   || '—');
-    });
-  }
-  loadSyncSettings();
-
-  // Show sync panel + success/error if redirected back from Gumroad OAuth
-  var urlParams = new URLSearchParams(window.location.search);
-  var grParam   = urlParams.get('gumroad');
-  if (grParam === 'connected') {
-    $('#sync-panel').slideDown(200);
-    $('#gumroad-sync-status').text('✅ Gumroad koblet til!').css('color','#16a34a');
-    history.replaceState({}, '', location.pathname + location.hash);
-  } else if (grParam === 'error') {
-    $('#sync-panel').slideDown(200);
-    var msg = urlParams.get('msg') || 'Ukjent feil';
-    $('#gumroad-sync-status').text('❌ Feil: ' + msg).css('color','#dc2626');
-    history.replaceState({}, '', location.pathname + location.hash);
-  }
-
-  $('#btn-open-sync').on('click', function() {
-    $('#sync-panel').slideDown(200);
-    loadSyncSettings();
-  });
-  $('#btn-sync-panel-close').on('click', function() {
-    $('#sync-panel').slideUp(200);
-  });
-
-  // Connect Gumroad via OAuth
-  $('#btn-gumroad-connect').on('click', function() {
-    var $btn = $(this);
-    $btn.prop('disabled', true).text('Åpner Gumroad...');
-    ajax('edifice_sync_get_oauth_url', {}, function(d) {
-      window.location.href = d.url;
-    }, function() {
-      $btn.prop('disabled', false).text('🔗 Koble til Gumroad');
-    });
-  });
-
-  // Disconnect Gumroad
-  $('#btn-gumroad-disconnect').on('click', function() {
-    if (!confirm('Koble fra Gumroad? Automatisk synk vil stoppe.')) return;
-    ajax('edifice_sync_disconnect', {}, function() {
-      $('#gumroad-connected').hide();
-      $('#gumroad-not-connected').show();
-      $('#gumroad-sync-status').text('Frakoblet.').css('color','#666');
-    });
-  });
-
-  $('#btn-sync-gumroad').on('click', function() {
-    var $btn = $(this);
-    $btn.prop('disabled', true).text('Synker...');
-    $('#gumroad-sync-status').text('').css('color','#666');
-    ajax('edifice_sync_gumroad', {}, function(d) {
-      $btn.prop('disabled', false).text('▶ Synk nå');
-      $('#gumroad-sync-status').text('✅ ' + d.message).css('color','#16a34a');
-      $('#gumroad-last-sync').text(new Date().toLocaleString('no-NO'));
-      setTimeout(function(){ location.reload(); }, 1500);
-    });
-  });
-
-  $('#btn-sync-chrome-now').on('click', function() {
-    $('#chrome-sync-status').text('Starter Chrome-sync via Cowork...').css('color','#666');
-    // This sends a message to the Cowork agent to run the Chrome sync
-    if (window.sendPrompt) {
-      window.sendPrompt('Kjør Chrome-sync for produktinntekter: hent tall fra PromptBase, KDP og Upwork og lagre i Edifice.');
-    } else {
-      $('#chrome-sync-status').text('⚠️ Åpne Cowork og si: «Kjør Chrome-sync for produktinntekter»').css('color','#b45309');
+        html += `</tbody></table></div>`;
+        document.getElementById('ch-detail-content').innerHTML = html;
     }
-  });
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Modals ──
+    window.ediCloseModal = function(id) {
+        document.getElementById(id).classList.remove('active');
+    };
+    function openModal(id) {
+        document.getElementById(id).classList.add('active');
+    }
+
+    // Product modal
+    document.getElementById('btn-add-product').addEventListener('click', function() {
+        document.getElementById('modal-product-title').textContent = 'Nytt produkt';
+        document.getElementById('prod-id').value          = '';
+        document.getElementById('prod-name').value        = '';
+        document.getElementById('prod-brand').value       = '';
+        document.getElementById('prod-description').value = '';
+        document.getElementById('prod-type').value        = 'ebook';
+        document.getElementById('prod-status').value      = 'active';
+        openModal('modal-product');
+    });
+
+    window.ediSaveProduct = function() {
+        ajax('edifice_product_save', {
+            id:          document.getElementById('prod-id').value,
+            name:        document.getElementById('prod-name').value,
+            brand:       document.getElementById('prod-brand').value,
+            description: document.getElementById('prod-description').value,
+            product_type:document.getElementById('prod-type').value,
+            status:      document.getElementById('prod-status').value,
+        }, function() { ediCloseModal('modal-product'); location.reload(); });
+    };
+
+    // Listing modal — new
+    document.getElementById('btn-add-listing').addEventListener('click', function() {
+        document.getElementById('modal-listing-title').textContent = 'Ny listing';
+        document.getElementById('lst-id').value       = '';
+        document.getElementById('lst-url').value      = '';
+        document.getElementById('lst-price').value    = '';
+        document.getElementById('lst-notes').value    = '';
+        document.getElementById('lst-platform').value = currentPlatform || 'PromptBase';
+        document.getElementById('lst-status').value   = 'live';
+        openModal('modal-listing');
+    });
+
+    // Listing modal — edit
+    window.ediEditListing = function(l) {
+        document.getElementById('modal-listing-title').textContent  = 'Rediger listing';
+        document.getElementById('lst-id').value                     = l.id;
+        document.getElementById('lst-product-id').value             = l.product_id;
+        document.getElementById('lst-platform').value               = l.platform;
+        document.getElementById('lst-status').value                 = l.listing_status;
+        document.getElementById('lst-url').value                    = l.listing_url || '';
+        document.getElementById('lst-price').value                  = l.price || '';
+        document.getElementById('lst-currency').value               = l.currency || 'USD';
+        document.getElementById('lst-notes').value                  = l.notes || '';
+        openModal('modal-listing');
+    };
+
+    window.ediSaveListing = function() {
+        ajax('edifice_listing_save', {
+            id:             document.getElementById('lst-id').value,
+            product_id:     document.getElementById('lst-product-id').value,
+            platform:       document.getElementById('lst-platform').value,
+            listing_status: document.getElementById('lst-status').value,
+            listing_url:    document.getElementById('lst-url').value,
+            price:          document.getElementById('lst-price').value,
+            currency:       document.getElementById('lst-currency').value,
+            notes:          document.getElementById('lst-notes').value,
+        }, function() {
+            ediCloseModal('modal-listing');
+            if (currentPlatform) {
+                // Refresh current channel view
+                const icon = document.getElementById('ch-detail-icon').textContent;
+                ediOpenChannel(currentPlatform, icon);
+            } else {
+                location.reload();
+            }
+        });
+    };
+
+    // Revenue modal
+    window.ediAddRevenue = function(listingId) {
+        document.getElementById('rev-listing-id').value = listingId;
+        document.getElementById('rev-revenue').value    = '';
+        document.getElementById('rev-sales').value      = '';
+        document.getElementById('rev-notes').value      = '';
+        document.getElementById('rev-date').value       = new Date().toISOString().split('T')[0];
+        openModal('modal-revenue');
+    };
+
+    window.ediSaveRevenue = function() {
+        ajax('edifice_product_revenue_save', {
+            listing_id:  document.getElementById('rev-listing-id').value,
+            date:        document.getElementById('rev-date').value,
+            revenue:     document.getElementById('rev-revenue').value,
+            sales_count: document.getElementById('rev-sales').value,
+            currency:    document.getElementById('rev-currency').value,
+            notes:       document.getElementById('rev-notes').value,
+        }, function() {
+            ediCloseModal('modal-revenue');
+            if (currentPlatform) {
+                const icon = document.getElementById('ch-detail-icon').textContent;
+                ediOpenChannel(currentPlatform, icon);
+            } else {
+                location.reload();
+            }
+        });
+    };
+
+    // Gumroad sync
+    document.getElementById('btn-sync-gumroad').addEventListener('click', function() {
+        const btn = this;
+        btn.disabled = true;
+        btn.textContent = '⏳ Synker…';
+        ajax('edifice_sync_gumroad', {}, function(data) {
+            btn.disabled = false;
+            btn.textContent = '🔄 Gumroad-sync';
+            alert('✅ Gumroad-sync fullført: ' + JSON.stringify(data));
+            location.reload();
+        });
+    });
+
+    // Close modals on overlay click
+    document.querySelectorAll('.edi-modal-overlay').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            if (e.target === el) el.classList.remove('active');
+        });
+    });
 
 })(jQuery);
 </script>
