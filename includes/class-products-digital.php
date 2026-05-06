@@ -222,7 +222,7 @@ class Edifice_Products_Digital {
             "SELECT COALESCE(SUM(revenue),0) FROM `$tr`"
         );
         $total_listings  = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$tl`");
-        $active_listings = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$tl` WHERE listing_status = 'live'");
+        $active_listings = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$tl` WHERE listing_status IN ('live','scheduled')");
 
         return compact('ytd', 'month', 'all_time', 'total_listings', 'active_listings');
     }
@@ -334,7 +334,7 @@ class Edifice_Products_Digital {
         $rows = $wpdb->get_results("
             SELECT l.platform,
                    COUNT(DISTINCT l.id)                                                            AS listing_count,
-                   SUM(CASE WHEN l.listing_status = 'live' THEN 1 ELSE 0 END)                    AS live_count,
+                   SUM(CASE WHEN l.listing_status IN ('live','scheduled') THEN 1 ELSE 0 END)     AS live_count,
                    COALESCE(SUM(r.revenue), 0)                                                     AS total_revenue,
                    COALESCE(SUM(r.sales_count), 0)                                                AS total_sales,
                    COALESCE(SUM(CASE WHEN r.snapshot_date >= DATE_FORMAT(NOW(), '%Y-%m-01')
