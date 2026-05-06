@@ -33,6 +33,15 @@
     }
   };
 
+  // Close on Escape key
+  $(document).on('keydown', function (e) {
+    if (e.key === 'Escape') {
+      $('.lh-modal-overlay.open').each(function () {
+        lhCloseModal(this.id);
+      });
+    }
+  });
+
   // Close on backdrop click
   $(document).on('click', '.lh-modal-overlay', function (e) {
     if (e.target === this) lhCloseModal(this.id);
