@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.1.1'); // bump to bust admin.js cache
+define('EDIFICE_VERSION', '1.1.2'); // bump to bust admin.js cache
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -79,3 +79,12 @@ add_action('wp_ajax_edifice_sync_get_listings',      ['Edifice_Sync_Products', '
 add_action('wp_ajax_edifice_sync_get_oauth_url',   ['Edifice_Sync_Products', 'ajax_get_oauth_url']);
 add_action('wp_ajax_edifice_sync_disconnect',       ['Edifice_Sync_Products', 'ajax_disconnect_gumroad']);
 add_action('wp_ajax_edifice_register_promptbase',    ['Edifice_Sync_Products', 'ajax_register_promptbase_product']);
+
+// Serve volcano favicon at /favicon.ico so Chrome updates its favicon cache
+add_action('do_favicon', function () {
+    header('Content-Type: image/svg+xml');
+    header('Cache-Control: public, max-age=3600');
+    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+    readfile(EDIFICE_DIR . 'assets/images/favicon.svg');
+    exit;
+}, 5); // priority 5, before WordPress default at 10

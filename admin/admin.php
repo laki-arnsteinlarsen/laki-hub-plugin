@@ -29,6 +29,8 @@ class Edifice_Admin {
 
     public static function enqueue_assets(string $hook) {
         if (strpos($hook, 'edifice') === false) return;
+        // Remove WP's default site icon before it fires at priority 99
+        remove_action('admin_head', 'wp_site_icon', 99);
         wp_enqueue_style('edifice-css', EDIFICE_URL . 'assets/css/admin.css',  [], EDIFICE_VERSION);
         wp_enqueue_script('edifice-js', EDIFICE_URL . 'assets/js/admin.js',   ['jquery'], EDIFICE_VERSION, true);
         wp_localize_script('edifice-js', 'Edifice', [
@@ -45,10 +47,8 @@ class Edifice_Admin {
         $screen = get_current_screen();
         if (!$screen || strpos($screen->id, 'edifice') === false) return;
         $url = esc_url(EDIFICE_URL . 'assets/images/favicon.svg?v=' . EDIFICE_VERSION);
-        // Output link tags + JS override to beat browser favicon cache
         echo "<link rel=\"icon\" type=\"image/svg+xml\" href=\"{$url}\">\n";
         echo "<link rel=\"shortcut icon\" href=\"{$url}\">\n";
-        echo "<script>(function(){var u='{$url}';document.querySelectorAll('link[rel*=\"icon\"]').forEach(function(l){l.parentNode.removeChild(l);});var l=document.createElement('link');l.rel='icon';l.type='image/svg+xml';l.href=u;document.head.appendChild(l);})();</script>\n";
     }
 
     public static function page_dashboard() { include EDIFICE_DIR . 'admin/views/dashboard.php'; }
