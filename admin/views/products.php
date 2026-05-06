@@ -212,7 +212,7 @@ $channel_config = [
         <div class="sb-divider"></div>
         <div class="sb-item">
             <span class="sb-val"><?= (int)$totals['active_listings'] ?></span>
-            <span class="sb-lbl">Aktive listings</span>
+            <span class="sb-lbl">Listings totalt</span>
         </div>
     </div>
 

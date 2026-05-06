@@ -222,7 +222,7 @@ class Edifice_Products_Digital {
             "SELECT COALESCE(SUM(revenue),0) FROM `$tr`"
         );
         $active_listings = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM `$tl` WHERE listing_status = 'live'"
+            "SELECT COUNT(*) FROM `$tl`"
         );
 
         return compact('ytd', 'month', 'all_time', 'active_listings');
