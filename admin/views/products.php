@@ -212,6 +212,11 @@ $channel_config = [
         <div class="sb-divider"></div>
         <div class="sb-item">
             <span class="sb-val"><?= (int)$totals['active_listings'] ?></span>
+            <span class="sb-lbl">Aktive listings</span>
+        </div>
+        <div class="sb-divider"></div>
+        <div class="sb-item">
+            <span class="sb-val"><?= (int)$totals['total_listings'] ?></span>
             <span class="sb-lbl">Listings totalt</span>
         </div>
     </div>
@@ -241,7 +246,13 @@ $channel_config = [
                         <div class="lbl">Totalt</div>
                     </div>
                 </div>
-                <span class="ch-listings-badge"><?= $count ?> listing<?= $count !== 1 ? 's' : '' ?></span>
+                <?php $live = isset($ch['live_count']) ? (int)$ch['live_count'] : 0; ?>
+                <span class="ch-listings-badge">
+                    <?= $live ?> aktiv<?= $live !== 1 ? 'e' : '' ?>
+                    <?php if ($count > $live): ?>
+                        <span style="color:#cbd5e1"> / <?= $count ?> totalt</span>
+                    <?php endif; ?>
+                </span>
             </div>
             <?php endforeach; ?>
         </div>

@@ -221,11 +221,10 @@ class Edifice_Products_Digital {
         $all_time = (float) $wpdb->get_var(
             "SELECT COALESCE(SUM(revenue),0) FROM `$tr`"
         );
-        $active_listings = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM `$tl`"
-        );
+        $total_listings  = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$tl`");
+        $active_listings = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$tl` WHERE listing_status = 'live'");
 
-        return compact('ytd', 'month', 'all_time', 'active_listings');
+        return compact('ytd', 'month', 'all_time', 'total_listings', 'active_listings');
     }
 
     public static function get_recent_snapshots(int $days = 30): array {
@@ -334,14 +333,15 @@ class Edifice_Products_Digital {
 
         $rows = $wpdb->get_results("
             SELECT l.platform,
-                   COUNT(DISTINCT l.id)                                                        AS listing_count,
-                   COALESCE(SUM(r.revenue), 0)                                                 AS total_revenue,
-                   COALESCE(SUM(r.sales_count), 0)                                            AS total_sales,
+                   COUNT(DISTINCT l.id)                                                            AS listing_count,
+                   SUM(CASE WHEN l.listing_status = 'live' THEN 1 ELSE 0 END)                    AS live_count,
+                   COALESCE(SUM(r.revenue), 0)                                                     AS total_revenue,
+                   COALESCE(SUM(r.sales_count), 0)                                                AS total_sales,
                    COALESCE(SUM(CASE WHEN r.snapshot_date >= DATE_FORMAT(NOW(), '%Y-%m-01')
-                                     THEN r.revenue ELSE 0 END), 0)                           AS month_revenue,
+                                     THEN r.revenue ELSE 0 END), 0)                               AS month_revenue,
                    COALESCE(SUM(CASE WHEN r.snapshot_date >= DATE_FORMAT(NOW(), '%Y-%m-01')
-                                     THEN r.sales_count ELSE 0 END), 0)                      AS month_sales,
-                   MAX(r.snapshot_date)                                                        AS last_synced
+                                     THEN r.sales_count ELSE 0 END), 0)                          AS month_sales,
+                   MAX(r.snapshot_date)                                                            AS last_synced
             FROM   `$tl` l
             LEFT JOIN `$tr` r ON r.listing_id = l.id
             GROUP BY l.platform
