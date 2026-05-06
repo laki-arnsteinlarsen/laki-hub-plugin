@@ -6,7 +6,7 @@ class Edifice_Admin {
     public static function init() {
         add_action('admin_menu',            [__CLASS__, 'register_menu']);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_assets']);
-        add_action('admin_head',            [__CLASS__, 'inject_favicon']);
+        add_action('admin_head', [__CLASS__, 'inject_favicon'], 100);
     }
 
     public static function register_menu() {
