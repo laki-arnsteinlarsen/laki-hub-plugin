@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.1.2'); // bump to bust admin.js cache
+define('EDIFICE_VERSION', '1.1.3'); // bump to bust admin.js cache
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -88,3 +88,20 @@ add_action('do_favicon', function () {
     readfile(EDIFICE_DIR . 'assets/images/favicon.svg');
     exit;
 }, 5); // priority 5, before WordPress default at 10
+
+// ── Login page: replace WP logo with volcano SVG ────────────────────────────
+add_action('login_enqueue_scripts', function () {
+    $svg_url = esc_url(EDIFICE_URL . 'assets/images/favicon.svg');
+    echo '<style>
+        #login h1 a, .login h1 a {
+            background-image: url("' . $svg_url . '") !important;
+            background-size: 84px 84px !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+            width: 84px !important;
+            height: 84px !important;
+        }
+    </style>' . "\n";
+});
+add_filter('login_headerurl',  fn() => admin_url('admin.php?page=edifice'));
+add_filter('login_headertext', fn() => 'Edifice');
