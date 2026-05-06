@@ -12,7 +12,6 @@ $channel_config = [
     'Upwork'     => ['icon' => '💼', 'label' => 'Upwork',     'color' => '#3b82f6'],
 ];
 
-$nonce = wp_create_nonce('edifice_nonce');
 ?>
 
 <style>
@@ -408,14 +407,31 @@ $nonce = wp_create_nonce('edifice_nonce');
 
 <script>
 (function($) {
-    const NONCE = '<?= $nonce ?>';
+    const NONCE = Edifice.nonce;
     let currentPlatform = null;
 
     // ── AJAX helper ──
     function ajax(action, data, cb) {
-        $.post(ajaxurl, Object.assign({ action, nonce: NONCE }, data), function(res) {
-            if (res.success) { cb(res.data); }
-            else { alert('Feil: ' + (res.data?.message || action)); }
+        $.ajax({
+            url: Edifice.ajax_url,
+            type: 'POST',
+            data: Object.assign({ action, nonce: NONCE }, data),
+            dataType: 'json',
+            success: function(res) {
+                if (res && res.success) { cb(res.data); }
+                else {
+                    document.getElementById('ch-spinner').style.display = 'none';
+                    const msg = res?.data?.message || action;
+                    document.getElementById('ch-detail-content').innerHTML =
+                        '<div class="edi-empty">⚠️ Feil: ' + msg + '</div>';
+                }
+            },
+            error: function(xhr) {
+                document.getElementById('ch-spinner').style.display = 'none';
+                document.getElementById('ch-detail-content').innerHTML =
+                    '<div class="edi-empty">⚠️ AJAX-feil (' + xhr.status + '): ' +
+                    xhr.responseText.substring(0, 300) + '</div>';
+            }
         });
     }
 
