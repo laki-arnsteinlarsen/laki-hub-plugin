@@ -387,3 +387,18 @@
   });
 
 })(jQuery);
+
+/* ── Favicon override ────────────────────────────────────────────────────── */
+/* Runs last (footer), so it replaces any favicon WordPress may have set      */
+(function () {
+  if (typeof Edifice === 'undefined' || !Edifice.plugin_url) return;
+  var url = Edifice.plugin_url + 'assets/images/favicon.svg?v=' + Date.now();
+  document.querySelectorAll('link[rel*="icon"]').forEach(function (el) {
+    el.parentNode && el.parentNode.removeChild(el);
+  });
+  var link = document.createElement('link');
+  link.rel  = 'icon';
+  link.type = 'image/svg+xml';
+  link.href = url;
+  document.head.appendChild(link);
+}());

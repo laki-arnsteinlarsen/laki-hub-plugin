@@ -36,6 +36,7 @@ class Edifice_Admin {
             'nonce'         => wp_create_nonce('edifice_nonce'),
             'gmail_enabled' => Edifice_Gmail::is_connected() ? 1 : 0,
             'settings_url'  => admin_url('admin.php?page=edifice-settings'),
+            'plugin_url'    => EDIFICE_URL,
         ]);
     }
 
