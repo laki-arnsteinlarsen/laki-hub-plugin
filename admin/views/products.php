@@ -247,12 +247,7 @@ $channel_config = [
                     </div>
                 </div>
                 <?php $live = isset($ch['live_count']) ? (int)$ch['live_count'] : 0; ?>
-                <span class="ch-listings-badge">
-                    <?= $live ?> aktiv<?= $live !== 1 ? 'e' : '' ?>
-                    <?php if ($count > $live): ?>
-                        <span style="color:#cbd5e1"> / <?= $count ?> totalt</span>
-                    <?php endif; ?>
-                </span>
+                <span class="ch-listings-badge"><?= $live ?> aktive / <?= $count ?> totalt</span>
             </div>
             <?php endforeach; ?>
         </div>
