@@ -20,6 +20,15 @@ if (!empty($_GET['_gmail_disconnect'])) {
     exit;
 }
 
+// Handle auto-login key regeneration
+if (!empty($_POST['_regen_autologin_key'])) {
+    check_admin_referer('edifice_regen_autologin');
+    update_option('edifice_autologin_key', wp_generate_password(48, false));
+    wp_safe_redirect(admin_url('admin.php?page=edifice-settings#autologin'));
+    exit;
+}
+
+
 // Save credentials
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['edifice_gmail_save'])) {
     check_admin_referer('edifice_gmail_settings');
@@ -118,5 +127,51 @@ $auth_url  = Edifice_Gmail::get_auth_url();
         </div>
       <?php endif; ?>
     </div>
+  
+  <!-- Auto-login card -->
+  <div id="autologin" class="lh-card" style="margin-top:24px">
+    <div class="lh-card-header" style="padding:20px 24px 0">
+      <h2>🔑 Auto-innlogging</h2>
+    </div>
+    <div style="padding:20px 24px">
+      <p style="font-size:13px;color:var(--lh-text);margin:0 0 16px">
+        Bokmerke denne URL-en på din maskin — klikk for å logge inn automatisk uten passord.
+      </p>
+      <?php
+        $key      = get_option('edifice_autologin_key', '');
+        $login_url = add_query_arg('edifice_key', $key, site_url('wp-login.php'));
+      ?>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input
+          type="text"
+          id="edifice-autologin-url"
+          readonly
+          value="<?= esc_attr($login_url) ?>"
+          style="flex:1;min-width:280px;font-family:monospace;font-size:12px;padding:8px 12px;border:1px solid var(--lh-border);border-radius:7px;background:#f8fafc;color:var(--lh-text)"
+        >
+        <button
+          type="button"
+          onclick="navigator.clipboard.writeText(document.getElementById('edifice-autologin-url').value).then(()=>{this.textContent='✅ Kopiert!';setTimeout(()=>this.textContent='📋 Kopier',2000)})"
+          class="button"
+          style="white-space:nowrap"
+        >📋 Kopier</button>
+      </div>
+      <form method="post" style="margin-top:14px" onsubmit="return confirm('Generer ny nøkkel? Den gamle URL-en vil slutte å virke.')">
+        <?php wp_nonce_field('edifice_regen_autologin'); ?>
+        <input type="hidden" name="_regen_autologin_key" value="1">
+        <button type="submit" class="button" style="font-size:12px;color:#b91c1c">
+          🔄 Generer ny nøkkel
+        </button>
+        <span style="font-size:11px;color:var(--lh-muted);margin-left:8px">
+          Bruk dette hvis nøkkelen er kompromittert
+        </span>
+      </form>
+      <p style="font-size:11px;color:var(--lh-muted);margin:14px 0 0">
+        ⚠️ Ikke del denne URL-en — den gir full tilgang uten passord.
+        "Husk meg"-cookies varer nå automatisk i 1 år.
+      </p>
+    </div>
   </div>
+
+</div>
 </div>

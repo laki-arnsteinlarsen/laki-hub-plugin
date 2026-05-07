@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.1.3'); // bump to bust admin.js cache
+define('EDIFICE_VERSION', '1.1.4'); // bump to bust admin.js cache
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -105,3 +105,33 @@ add_action('login_enqueue_scripts', function () {
 });
 add_filter('login_headerurl',  fn() => admin_url('admin.php?page=edifice'));
 add_filter('login_headertext', fn() => 'Edifice');
+
+// ── Auto-login via secret token ─────────────────────────────────────────────
+// Visit /wp-login.php?edifice_key=TOKEN to log in automatically.
+// Token is stored in wp_options and shown in Edifice → Innstillinger.
+add_action('init', function () {
+    if (! isset($_GET['edifice_key'])) return;
+
+    $stored = get_option('edifice_autologin_key', '');
+    if (! $stored || ! hash_equals($stored, sanitize_text_field($_GET['edifice_key']))) return;
+
+    // Valid key — log in as first admin
+    $admins = get_users(['role' => 'administrator', 'number' => 1, 'fields' => 'ID']);
+    if (empty($admins)) return;
+
+    wp_set_auth_cookie((int) $admins[0], true, is_ssl());
+    wp_redirect(admin_url('admin.php?page=edifice'));
+    exit;
+}, 1);
+
+// Generate key on first activation if missing
+add_action('plugins_loaded', function () {
+    if (! get_option('edifice_autologin_key')) {
+        update_option('edifice_autologin_key', wp_generate_password(48, false));
+    }
+});
+
+// ── Extend "Remember Me" cookie to 1 year ───────────────────────────────────
+add_filter('auth_cookie_expiration', function ($length, $user_id, $remember) {
+    return $remember ? YEAR_IN_SECONDS : $length;
+}, 10, 3);
