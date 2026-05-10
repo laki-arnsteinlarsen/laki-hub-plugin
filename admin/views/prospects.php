@@ -229,13 +229,97 @@ $counts    = Edifice_Prospects::counts();
     });
   }
 
+  // ── Score-breakdown — speiler PHP Edifice_Prospects::compute_scores() ───
+  // Returnerer array av {label, value, points, note} pluss total og max.
+  function scoreBreakdown(d) {
+    const lines = [];
+    let total = 0;
+    const max = 30 + 35 + 8 + 10; // = 83
+
+    // Ansatte (maks 30)
+    const empKnown = d.employees !== null && d.employees !== '';
+    const emp = empKnown ? parseInt(d.employees, 10) : null;
+    if (!empKnown) {
+      lines.push({ label: 'Ansatte', value: 'Ukjent', points: 10, note: 'nøytral score for manglende NAV-data' });
+      total += 10;
+    } else if (emp >= 5 && emp <= 15) {
+      lines.push({ label: 'Ansatte', value: emp + ' ansatte', points: 30, note: 'sweet spot 5–15' });
+      total += 30;
+    } else if (emp >= 16 && emp <= 25) {
+      lines.push({ label: 'Ansatte', value: emp + ' ansatte', points: 25, note: 'veldig godt' });
+      total += 25;
+    } else if (emp >= 2 && emp <= 4) {
+      lines.push({ label: 'Ansatte', value: emp + ' ansatte', points: 15, note: 'små men relevante' });
+      total += 15;
+    } else {
+      lines.push({ label: 'Ansatte', value: emp + ' ansatte', points: 0, note: 'utenfor sweet spot' });
+    }
+
+    // Omsetning (maks 35)
+    const rev = parseFloat(d.revenue_latest || 0);
+    const revFmt = rev > 0
+      ? new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 }).format(rev / 1000000) + ' MNOK'
+      : 'Mangler';
+    if (rev <= 0) {
+      lines.push({ label: 'Omsetning', value: 'Mangler regnskap', points: 0, note: '— typisk ny eller forsinket levering' });
+    } else if (rev >= 3000000 && rev <= 20000000) {
+      lines.push({ label: 'Omsetning', value: revFmt, points: 35, note: 'sweet spot 3–20 MNOK' });
+      total += 35;
+    } else if (rev >= 20000000 && rev <= 50000000) {
+      lines.push({ label: 'Omsetning', value: revFmt, points: 20, note: 'over sweet, fortsatt relevant' });
+      total += 20;
+    } else if (rev >= 1000000 && rev < 3000000) {
+      lines.push({ label: 'Omsetning', value: revFmt, points: 15, note: 'voksefase, under sweet' });
+      total += 15;
+    } else if (rev > 50000000) {
+      lines.push({ label: 'Omsetning', value: revFmt, points: 5, note: 'for stor — sjeldne 25-emp-bedrifter' });
+      total += 5;
+    } else {
+      lines.push({ label: 'Omsetning', value: revFmt, points: 5, note: 'tidlig fase, lavt prioritet' });
+      total += 5;
+    }
+
+    // Kontaktinfo (maks 8)
+    if (d.email) { lines.push({ label: 'E-post registrert', value: '✓', points: 5, note: '' }); total += 5; }
+    else lines.push({ label: 'E-post registrert', value: '—', points: 0, note: '' });
+    if (d.phone) { lines.push({ label: 'Telefon registrert', value: '✓', points: 3, note: '' }); total += 3; }
+    else lines.push({ label: 'Telefon registrert', value: '—', points: 0, note: '' });
+
+    // Modenhet (maks 10)
+    if (d.registration_date) {
+      const ageYears = (Date.now() - new Date(d.registration_date).getTime()) / (365 * 86400000);
+      const ageStr = ageYears.toFixed(1) + ' år';
+      if (ageYears >= 2 && ageYears <= 5) {
+        lines.push({ label: 'Modenhet', value: ageStr, points: 10, note: 'sweet spot 2–5 år' });
+        total += 10;
+      } else if (ageYears > 5 && ageYears <= 15) {
+        lines.push({ label: 'Modenhet', value: ageStr, points: 7, note: 'etablert' });
+        total += 7;
+      } else if (ageYears >= 0 && ageYears < 2) {
+        lines.push({ label: 'Modenhet', value: ageStr, points: 5, note: 'helt fersk' });
+        total += 5;
+      } else if (ageYears > 15 && ageYears <= 25) {
+        lines.push({ label: 'Modenhet', value: ageStr, points: 3, note: 'mellomalder' });
+        total += 3;
+      } else if (ageYears > 25) {
+        lines.push({ label: 'Modenhet', value: ageStr, points: 1, note: 'gammel/rigid' });
+        total += 1;
+      }
+    } else {
+      lines.push({ label: 'Modenhet', value: 'Ukjent', points: 0, note: '' });
+    }
+
+    return { lines, total, max };
+  }
+
   // ── View modal ──────────────────────────────────────────────────────────
   $(document).on('click', '.lh-view-prospect-btn', function () {
     const d = $(this).data('record');
     $('#view-prospect-name').text(d.name);
 
     const escHtml = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const fmt = (label, value) => value ? `<div class="lh-view-field"><div class="lh-view-label">${label}</div><div class="lh-view-value">${value}</div></div>` : '';
+    const fmt = (label, value) => `<div class="lh-view-field"><div class="lh-view-label">${label}</div><div class="lh-view-value">${value}</div></div>`;
+    const muted = txt => `<span style="color:var(--lh-muted)">${escHtml(txt)}</span>`;
     const rev = parseFloat(d.revenue_latest || 0);
     const revStr = rev > 0
       ? new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(rev) + ' kr' + (d.revenue_year ? ` (${d.revenue_year})` : '')
@@ -243,27 +327,80 @@ $counts    = Edifice_Prospects::counts();
     const wpStr = d.has_wordpress === 1 || d.has_wordpress === '1'
       ? 'Ja' + (d.wp_version ? ` (v${escHtml(d.wp_version)})` : '')
       : (d.has_wordpress === 0 || d.has_wordpress === '0' ? 'Nei' : 'Ikke skannet');
-
-    let html = '';
-    html += fmt('Org.nr', escHtml(d.org_nr));
-    html += fmt('Bransje', `${escHtml(d.nace_code || '')} ${escHtml(d.nace_description || '')}`);
-    html += fmt('Ansatte', d.employees !== null && d.employees !== ''
-      ? escHtml(d.employees)
-      : '<span style="color:var(--lh-muted)">Ikke registrert i Brreg/NAV</span>');
-    html += fmt('Kommune', escHtml(d.kommune_navn));
-    html += fmt('Etablert', d.registration_date ? escHtml(d.registration_date) : '');
-    html += fmt('Omsetning', escHtml(revStr));
-    html += fmt('Advisory-score', `<span class="lh-badge lh-badge-${parseInt(d.advisory_score)>=50?'green':parseInt(d.advisory_score)>=30?'yellow':'gray'}">${d.advisory_score}</span>`);
-    // Defensiv: hvis website mangler schema (eldre rader pre-1.4.1), prepend https://
     const websiteHref = d.website
       ? (/^https?:\/\//i.test(d.website) ? d.website : 'https://' + d.website.replace(/^\/+/, ''))
       : '';
-    html += fmt('Hjemmeside', websiteHref ? `<a href="${escHtml(websiteHref)}" target="_blank" rel="noopener">${escHtml(d.website)}</a>` : '');
-    html += fmt('E-post', d.email ? `<a href="mailto:${escHtml(d.email)}">${escHtml(d.email)}</a>` : '');
-    html += fmt('Telefon', d.phone ? `<a href="tel:${escHtml(d.phone)}">${escHtml(d.phone)}</a>` : '');
-    html += fmt('Adresse', escHtml(d.address));
-    html += fmt('Postadresse', escHtml(d.postal_address));
+    const score = parseInt(d.advisory_score) || 0;
+    const scoreCls = score >= 50 ? 'green' : score >= 30 ? 'yellow' : 'gray';
+
+    let html = '';
+
+    // Selskapsinfo
+    html += '<div class="lh-view-section-title">📋 Selskapsinfo</div>';
+    html += fmt('Org.nr', escHtml(d.org_nr));
+    html += fmt('Bransje', escHtml((d.nace_code || '') + ' ' + (d.nace_description || '')));
+    html += fmt('Ansatte', d.employees !== null && d.employees !== ''
+      ? escHtml(d.employees)
+      : muted('Ikke registrert i Brreg/NAV'));
+    html += fmt('Kommune', d.kommune_navn ? escHtml(d.kommune_navn) : muted('—'));
+    html += fmt('Etablert', d.registration_date ? escHtml(d.registration_date) : muted('—'));
+    html += fmt('Omsetning', revStr ? escHtml(revStr) : muted('Ikke i regnskapsregisteret'));
+
+    // Kontaktinfo (alltid synlig — også med tomme felt)
+    html += '<div class="lh-view-section-title" style="margin-top:14px">📞 Kontaktinfo</div>';
+    html += fmt('E-post', d.email
+      ? `<a href="mailto:${escHtml(d.email)}">${escHtml(d.email)}</a>`
+      : muted('Ikke registrert'));
+    html += fmt('Telefon', d.phone
+      ? `<a href="tel:${escHtml(d.phone)}">${escHtml(d.phone)}</a>`
+      : muted('Ikke registrert'));
+    html += fmt('Hjemmeside', websiteHref
+      ? `<a href="${escHtml(websiteHref)}" target="_blank" rel="noopener">${escHtml(d.website)}</a>`
+      : muted('Ikke registrert'));
+
+    // Adresser
+    if (d.address || d.postal_address) {
+      html += '<div class="lh-view-section-title" style="margin-top:14px">📍 Adresser</div>';
+      if (d.address)        html += fmt('Besøksadresse', escHtml(d.address));
+      if (d.postal_address) html += fmt('Postadresse',   escHtml(d.postal_address));
+    }
+
+    // Annet
+    html += '<div class="lh-view-section-title" style="margin-top:14px">🌐 Annet</div>';
     html += fmt('WordPress', escHtml(wpStr));
+
+    // Score-utregning
+    const bd = scoreBreakdown(d);
+    html += '<div class="lh-view-section-title" style="margin-top:14px">📊 Score-utregning</div>';
+    html += '<div style="background:#f8fafc;border:1px solid var(--lh-border);border-radius:8px;padding:12px;margin-top:6px;grid-column:1/-1">';
+    html += '<table style="width:100%;font-size:13px;border-collapse:collapse">';
+    bd.lines.forEach(line => {
+      const dim = (line.points > 0 ? '#1e293b' : '#94a3b8');
+      const pts = line.points > 0
+        ? `<strong style="color:#16a34a">+${line.points}</strong>`
+        : '<span style="color:#94a3b8">0</span>';
+      html += `<tr style="border-bottom:1px solid #e2e8f0">
+        <td style="padding:6px 4px;color:${dim};width:35%">${escHtml(line.label)}</td>
+        <td style="padding:6px 4px;color:${dim}">${escHtml(line.value)}</td>
+        <td style="padding:6px 4px;text-align:right;width:60px">${pts}</td>
+        <td style="padding:6px 4px;color:#94a3b8;font-size:11px;font-style:italic">${escHtml(line.note)}</td>
+      </tr>`;
+    });
+    html += `<tr>
+      <td colspan="2" style="padding:8px 4px;font-weight:600">Sum advisory-score</td>
+      <td style="padding:8px 4px;text-align:right;font-weight:700;font-size:15px">
+        <span class="lh-badge lh-badge-${scoreCls}">${bd.total}</span>
+      </td>
+      <td style="padding:8px 4px;color:#94a3b8;font-size:11px">av maks ${bd.max}</td>
+    </tr>`;
+    html += '</table>';
+    if (bd.total !== score) {
+      html += `<div style="margin-top:8px;font-size:11px;color:#dc2626">
+        ⚠️ Lagret score (${score}) avviker fra beregnet (${bd.total}) — kjør re-skann for å oppdatere.
+      </div>`;
+    }
+    html += '</div>';
+
     $('#view-prospect-fields').html(html);
 
     $('#view-prospect-add').off('click').on('click', () => addToCRM(d.id));
