@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.1.5'); // fix: pass gmail_enabled + settings_url to frontend SPA
+define('EDIFICE_VERSION', '1.1.6'); // gmail: structured error responses + query visibility
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

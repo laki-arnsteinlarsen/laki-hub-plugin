@@ -307,16 +307,32 @@
       email:  email,
     }, function (r) {
       if (!r.success) {
-        $list.html(`<div class="lh-gmail-empty">${escHtml(r.data || 'Feil ved henting av e-poster.')}</div>`);
+        // r.data may be a string (legacy) or object {message, detail, query}
+        const errMsg = (r.data && r.data.message) ? r.data.message : (r.data || 'Feil ved henting av e-poster.');
+        const errQry = (r.data && r.data.query) ? r.data.query : '';
+        const detailJson = (r.data && r.data.detail)
+          ? `<pre style="font-size:11px;background:#fef2f2;padding:8px;border-radius:6px;margin-top:6px;overflow:auto">${escHtml(JSON.stringify(r.data.detail, null, 2))}</pre>`
+          : '';
+        $list.html(`<div class="lh-gmail-empty" style="text-align:left">
+          <strong>${escHtml(errMsg)}</strong>
+          ${errQry ? `<div style="font-size:11px;color:var(--lh-muted);margin-top:4px">Søk: <code>${escHtml(errQry)}</code></div>` : ''}
+          ${detailJson}
+        </div>`);
         $status.text('Feil').attr('class', 'lh-badge lh-badge-red');
         return;
       }
-      if (!r.data || !r.data.length) {
-        $list.html('<div class="lh-gmail-empty">Ingen e-poster funnet med denne adressen.</div>');
+      // r.data shape: { emails: [...], query, count, estimate }
+      const emails = (r.data && r.data.emails) || [];
+      const query  = (r.data && r.data.query)  || '';
+      if (!emails.length) {
+        $list.html(`<div class="lh-gmail-empty" style="text-align:left">
+          Ingen e-poster funnet.
+          <div style="font-size:11px;color:var(--lh-muted);margin-top:4px">Søk: <code>${escHtml(query)}</code></div>
+        </div>`);
         $status.text('0 e-poster').attr('class', 'lh-badge lh-badge-gray');
         return;
       }
-      const html = r.data.map(m => {
+      const html = emails.map(m => {
         const isSent  = !!m.sent;
         const dirCls  = isSent ? 'sent' : 'received';
         const dirIcon = isSent ? '↗' : '↙';
@@ -333,7 +349,7 @@
         </a>`;
       }).join('');
       $list.html(html);
-      $status.text(r.data.length + (r.data.length === 1 ? ' e-post' : ' e-poster'))
+      $status.text(emails.length + (emails.length === 1 ? ' e-post' : ' e-poster'))
              .attr('class', 'lh-badge lh-badge-green');
     });
   }

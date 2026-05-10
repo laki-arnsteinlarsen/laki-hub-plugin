@@ -101,21 +101,56 @@ class Edifice_Gmail {
 
     /**
      * Returns last $limit emails involving $email address.
-     * Each item: [id, subject, from, to, date, date_ts, sent]
+     *
+     * Returns:
+     *   ['ok' => true,  'emails' => [...], 'query' => '...', 'count' => N]
+     *   ['ok' => false, 'error'  => 'Beskrivelse', 'detail' => mixed]
+     *
+     * Each email item: [id, subject, from, to, date, date_ts, sent]
      */
     public static function get_emails_for_address(string $email, int $limit = 5): array {
+        if (!$email) {
+            return ['ok' => false, 'error' => 'Tom e-postadresse'];
+        }
         $token = self::get_access_token();
-        if (!$token || !$email) return [];
+        if (!$token) {
+            return ['ok' => false, 'error' => 'Ingen access token (kobling kan ha gått ut — koble til på nytt)'];
+        }
 
-        $q        = rawurlencode('to:' . $email . ' OR from:' . $email);
+        $query    = '(to:' . $email . ' OR from:' . $email . ')';
+        $q        = rawurlencode($query);
         $list_url = 'https://gmail.googleapis.com/gmail/v1/users/me/messages?q=' . $q . '&maxResults=' . $limit;
         $list_r   = wp_remote_get($list_url, [
             'headers' => ['Authorization' => 'Bearer ' . $token],
             'timeout' => 10,
         ]);
-        if (is_wp_error($list_r)) return [];
-        $list = json_decode(wp_remote_retrieve_body($list_r), true);
-        if (empty($list['messages'])) return [];
+        if (is_wp_error($list_r)) {
+            return ['ok' => false, 'error' => 'Nettverksfeil: ' . $list_r->get_error_message()];
+        }
+
+        $code = (int) wp_remote_retrieve_response_code($list_r);
+        $body = wp_remote_retrieve_body($list_r);
+        $list = json_decode($body, true);
+
+        if ($code !== 200) {
+            $api_err = $list['error']['message'] ?? 'HTTP ' . $code;
+            return [
+                'ok'     => false,
+                'error'  => 'Gmail API svarte ' . $code . ': ' . $api_err,
+                'detail' => $list['error'] ?? null,
+                'query'  => $query,
+            ];
+        }
+
+        if (empty($list['messages'])) {
+            return [
+                'ok'     => true,
+                'emails' => [],
+                'query'  => $query,
+                'count'  => 0,
+                'estimate' => $list['resultSizeEstimate'] ?? 0,
+            ];
+        }
 
         $emails     = [];
         $admin_mail = strtolower(get_option('admin_email', ''));
@@ -150,7 +185,13 @@ class Edifice_Gmail {
                 'sent'    => $sent,
             ];
         }
-        return $emails;
+
+        return [
+            'ok'     => true,
+            'emails' => $emails,
+            'query'  => $query,
+            'count'  => count($emails),
+        ];
     }
 
     // ── AJAX ───────────────────────────────────────────────────────────────
@@ -166,7 +207,22 @@ class Edifice_Gmail {
             wp_send_json_error('Gmail ikke koblet til');
             return;
         }
-        $emails = self::get_emails_for_address($email);
-        wp_send_json_success($emails);
+        $result = self::get_emails_for_address($email);
+        if (!empty($result['ok'])) {
+            // Return a flat array of emails for backward compat with admin.js,
+            // but include debug fields as a property of the array for inspection.
+            wp_send_json_success([
+                'emails'   => $result['emails']   ?? [],
+                'query'    => $result['query']    ?? '',
+                'count'    => $result['count']    ?? 0,
+                'estimate' => $result['estimate'] ?? null,
+            ]);
+        } else {
+            wp_send_json_error([
+                'message' => $result['error']  ?? 'Ukjent feil',
+                'detail'  => $result['detail'] ?? null,
+                'query'   => $result['query']  ?? null,
+            ]);
+        }
     }
 }
