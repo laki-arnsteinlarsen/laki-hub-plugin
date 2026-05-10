@@ -172,15 +172,26 @@ $n_persons   = count($contacts) - $n_companies;
           </div>
         </div>
 
-        <!-- Company link (persons only) -->
+        <!-- Company links (persons only — flere selskaper med rolle) -->
         <div class="lh-form-row" id="crm-company-row" style="display:none">
-          <label>Tilknyttet selskap</label>
-          <select name="company_id">
-            <option value="">— Velg selskap —</option>
-            <?php foreach ($companies as $co): ?>
-              <option value="<?= $co['id'] ?>"><?= esc_html($co['name']) ?></option>
-            <?php endforeach; ?>
-          </select>
+          <label>Tilknyttet selskap (første blir primær)</label>
+          <div id="crm-companies-list"></div>
+          <button type="button" class="lh-btn lh-btn-secondary lh-btn-sm" id="crm-add-company-btn"
+                  style="margin-top:6px">+ Legg til selskap</button>
+          <input type="hidden" name="companies_json" id="crm-companies-json" value="">
+          <template id="crm-company-row-tpl">
+            <div class="lh-link-row" style="display:flex;gap:6px;margin-top:6px;align-items:center">
+              <select class="js-company-select" style="flex:2">
+                <option value="">— Velg selskap —</option>
+                <?php foreach ($companies as $co): ?>
+                  <option value="<?= $co['id'] ?>"><?= esc_html($co['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+              <input type="text" class="js-company-role" placeholder="Rolle (valgfri)" style="flex:1">
+              <button type="button" class="lh-btn lh-btn-danger lh-btn-sm js-remove-company-row"
+                      title="Fjern" style="padding:4px 10px">×</button>
+            </div>
+          </template>
         </div>
 
         <div class="lh-form-row">
@@ -199,7 +210,7 @@ $n_persons   = count($contacts) - $n_companies;
         </div>
         <div class="lh-form-grid">
           <div class="lh-form-row">
-            <label>E-post</label>
+            <label>E-post (primær)</label>
             <input type="email" name="email">
           </div>
           <div class="lh-form-row">
@@ -216,9 +227,32 @@ $n_persons   = count($contacts) - $n_companies;
             </div>
           </div>
         </div>
+
+        <!-- Ekstra e-postadresser -->
         <div class="lh-form-row">
-          <label>Adresse</label>
+          <label>Flere e-postadresser</label>
+          <div id="crm-emails-list"></div>
+          <button type="button" class="lh-btn lh-btn-secondary lh-btn-sm" id="crm-add-email-btn"
+                  style="margin-top:6px">+ Legg til e-post</button>
+          <input type="hidden" name="extra_emails_json" id="crm-extra-emails-json" value="">
+          <template id="crm-email-row-tpl">
+            <div class="lh-link-row" style="display:flex;gap:6px;margin-top:6px;align-items:center">
+              <input type="email" class="js-email-input" placeholder="navn@example.com" style="flex:2">
+              <input type="text"  class="js-email-label" placeholder="Etikett (Privat, Jobb…)" style="flex:1">
+              <button type="button" class="lh-btn lh-btn-danger lh-btn-sm js-remove-email-row"
+                      title="Fjern" style="padding:4px 10px">×</button>
+            </div>
+          </template>
+        </div>
+
+        <!-- Adresse: én for person, to for selskap -->
+        <div class="lh-form-row">
+          <label id="crm-address-label">Adresse</label>
           <input type="text" name="address">
+        </div>
+        <div class="lh-form-row" id="crm-postal-address-row" style="display:none">
+          <label>Postadresse</label>
+          <input type="text" name="postal_address">
         </div>
 
         <details class="lh-form-details" style="margin:12px 0 4px">
@@ -340,12 +374,80 @@ function crmTypeToggle(val) {
   const isPerson = val === 'person';
   document.getElementById('crm-company-row').style.display = isPerson ? '' : 'none';
   document.getElementById('crm-orgnr-row').style.display   = isPerson ? 'none' : '';
+  // Selskap har både besøksadresse og postadresse
+  const addrLabel = document.getElementById('crm-address-label');
+  const postalRow = document.getElementById('crm-postal-address-row');
+  if (addrLabel) addrLabel.textContent = isPerson ? 'Adresse' : 'Besøksadresse';
+  if (postalRow) postalRow.style.display = isPerson ? 'none' : '';
 }
 document.getElementById('crm-type-select')?.addEventListener('change', function () {
   crmTypeToggle(this.value);
 });
-// Reset on modal open
+// Reset on modal open. Hvis "Ny kontakt"-knappen brukes (ikke edit) — tøm
+// dynamiske rader. Edit-knappen kaller lhFillForm som styrer dette selv.
 document.getElementById('modal-crm')?.addEventListener('lh:opened', function () {
   crmTypeToggle(document.getElementById('crm-type-select')?.value || 'company');
+  // Hvis form er nullstilt (id-input er tom), tøm dynamiske lister
+  const idInput = document.querySelector('#modal-crm form [name="id"]');
+  if (idInput && !idInput.value) {
+    document.getElementById('crm-emails-list')?.replaceChildren();
+    document.getElementById('crm-companies-list')?.replaceChildren();
+  }
+});
+
+/* ── Dynamiske rader: e-poster og selskaper ─────────────────────────────── */
+function crmAddEmailRow(prefill) {
+  const tpl = document.getElementById('crm-email-row-tpl');
+  const list = document.getElementById('crm-emails-list');
+  if (!tpl || !list) return;
+  const node = tpl.content.cloneNode(true);
+  const row  = node.querySelector('.lh-link-row');
+  if (prefill) {
+    row.querySelector('.js-email-input').value = prefill.email || '';
+    row.querySelector('.js-email-label').value = prefill.label || '';
+  }
+  row.querySelector('.js-remove-email-row').addEventListener('click', () => row.remove());
+  list.appendChild(row);
+}
+function crmAddCompanyRow(prefill) {
+  const tpl = document.getElementById('crm-company-row-tpl');
+  const list = document.getElementById('crm-companies-list');
+  if (!tpl || !list) return;
+  const node = tpl.content.cloneNode(true);
+  const row  = node.querySelector('.lh-link-row');
+  if (prefill) {
+    row.querySelector('.js-company-select').value = prefill.company_id || '';
+    row.querySelector('.js-company-role').value   = prefill.role || '';
+  }
+  row.querySelector('.js-remove-company-row').addEventListener('click', () => row.remove());
+  list.appendChild(row);
+}
+document.getElementById('crm-add-email-btn')?.addEventListener('click', () => crmAddEmailRow());
+document.getElementById('crm-add-company-btn')?.addEventListener('click', () => crmAddCompanyRow());
+
+// Eksponer som globaler så admin.js (lhFillForm) kan pre-fylle ved redigering
+window.crmAddEmailRow   = crmAddEmailRow;
+window.crmAddCompanyRow = crmAddCompanyRow;
+window.crmTypeToggle    = crmTypeToggle;
+
+/* ── Serialiser dynamiske rader til JSON før form-submit ─────────────────── */
+document.querySelector('#modal-crm form')?.addEventListener('submit', function () {
+  // E-poster
+  const emails = [];
+  document.querySelectorAll('#crm-emails-list .lh-link-row').forEach(r => {
+    const e = r.querySelector('.js-email-input').value.trim();
+    const l = r.querySelector('.js-email-label').value.trim();
+    if (e) emails.push({ email: e, label: l });
+  });
+  document.getElementById('crm-extra-emails-json').value = JSON.stringify(emails);
+
+  // Selskaper
+  const companies = [];
+  document.querySelectorAll('#crm-companies-list .lh-link-row').forEach(r => {
+    const cid = r.querySelector('.js-company-select').value;
+    const rl  = r.querySelector('.js-company-role').value.trim();
+    if (cid) companies.push({ company_id: parseInt(cid, 10), role: rl });
+  });
+  document.getElementById('crm-companies-json').value = JSON.stringify(companies);
 });
 </script>

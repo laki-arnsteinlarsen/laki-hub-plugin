@@ -225,7 +225,20 @@ class Edifice_Gmail {
             return ['ok' => false, 'error' => 'Ingen access token (kobling kan ha gått ut — koble til på nytt)'];
         }
 
-        $query    = '(to:' . $email . ' OR from:' . $email . ')';
+        // Tillat kommaseparert liste — bygg OR-query mot alle adresser
+        $addresses = array_values(array_filter(array_map(
+            'trim',
+            explode(',', $email)
+        )));
+        if (empty($addresses)) {
+            return ['ok' => false, 'error' => 'Tom e-postadresse'];
+        }
+        $clauses = [];
+        foreach ($addresses as $addr) {
+            $clauses[] = "to:$addr";
+            $clauses[] = "from:$addr";
+        }
+        $query    = '(' . implode(' OR ', $clauses) . ')';
         $q        = rawurlencode($query);
         $list_url = 'https://gmail.googleapis.com/gmail/v1/users/me/messages?q=' . $q . '&maxResults=' . $limit;
         $list_r   = wp_remote_get($list_url, [
@@ -306,7 +319,11 @@ class Edifice_Gmail {
 
     public static function ajax_get_emails(): void {
         check_ajax_referer('edifice_nonce', 'nonce');
-        $email = sanitize_email($_POST['email'] ?? '');
+        // Aksepterer enten én e-post eller kommaseparert liste
+        $raw = sanitize_text_field(wp_unslash($_POST['email'] ?? ''));
+        $parts = array_filter(array_map('trim', explode(',', $raw)));
+        $clean = array_values(array_filter(array_map('sanitize_email', $parts)));
+        $email = implode(',', $clean);
         if (!$email) {
             wp_send_json_error('Mangler e-postadresse');
             return;

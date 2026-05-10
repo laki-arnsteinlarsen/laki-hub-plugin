@@ -172,12 +172,19 @@
       else if ($el.is('input[type=checkbox]')) $el.prop('checked', !!v);
       else                                     $el.val(v ?? '');
     });
-    // CRM type toggle
+    // Tøm dynamiske lister
+    document.getElementById('crm-emails-list')?.replaceChildren();
+    document.getElementById('crm-companies-list')?.replaceChildren();
+    // Pre-fyll ekstra e-poster
+    (data.extra_emails || []).forEach(e => window.crmAddEmailRow?.(e));
+    // Pre-fyll selskap-linker (person)
+    (data.companies || []).forEach(c => window.crmAddCompanyRow?.({
+      company_id: c.company_id, role: c.role || ''
+    }));
+    // CRM type toggle (også synker postal-address)
     const typeSelect = $modal.find('#crm-type-select');
     if (typeSelect.length) {
-      const isPerson = typeSelect.val() === 'person';
-      $modal.find('#crm-company-row').toggle(isPerson);
-      $modal.find('#crm-orgnr-row').toggle(!isPerson);
+      window.crmTypeToggle?.(typeSelect.val() || 'company');
     }
   }
 
@@ -249,14 +256,44 @@
 
     // Core fields
     let fields = '';
-    if (d.company_name) fields += viewField('Tilknyttet selskap', escHtml(d.company_name));
-    if (d.org_nr)       fields += viewField('Org.nr', escHtml(d.org_nr));
-    if (d.category)     fields += viewField('Kategori', escHtml(d.category));
+    // Selskaper (person): vis alle linker. Primær først (allerede sortert i SQL).
+    if (!isCompany && d.companies && d.companies.length) {
+      const companyList = d.companies.map(c => {
+        const role = c.role ? ` <span style="color:var(--lh-muted);font-size:12px">(${escHtml(c.role)})</span>` : '';
+        return `<div>${escHtml(c.company_name || '—')}${role}</div>`;
+      }).join('');
+      fields += viewField('Tilknyttet selskap', companyList);
+    } else if (d.company_name) {
+      // Bakoverkomp: hvis companies-array ikke finnes, fall tilbake til denormalisert felt
+      fields += viewField('Tilknyttet selskap', escHtml(d.company_name));
+    }
+    if (d.org_nr)   fields += viewField('Org.nr', escHtml(d.org_nr));
+    if (d.category) fields += viewField('Kategori', escHtml(d.category));
     const [sLabel, sCls] = crmStatusBadge[d.status] || ['?', 'lh-badge-gray'];
     fields += viewField('Status', `<span class="lh-badge ${sCls}">${sLabel}</span>`);
-    if (d.email) fields += viewField('E-post',   `<a href="mailto:${escHtml(d.email)}">${escHtml(d.email)}</a>`);
+
+    // E-poster: primær + ekstra (alle med mailto-link)
+    const allEmails = [];
+    if (d.email) allEmails.push({ email: d.email, label: '' });
+    (d.extra_emails || []).forEach(e => allEmails.push({ email: e.email, label: e.label || '' }));
+    if (allEmails.length) {
+      const emailList = allEmails.map(e => {
+        const lbl = e.label ? ` <span style="color:var(--lh-muted);font-size:12px">(${escHtml(e.label)})</span>` : '';
+        return `<div><a href="mailto:${escHtml(e.email)}">${escHtml(e.email)}</a>${lbl}</div>`;
+      }).join('');
+      fields += viewField(allEmails.length > 1 ? 'E-post' : 'E-post', emailList);
+    }
+
     if (d.phone) fields += viewField('Telefon',  `<a href="tel:${escHtml(phoneTelHref(d.phone))}">${escHtml(formatPhone(d.phone))}</a>`);
-    if (d.address)     fields += viewField('Adresse',   escHtml(d.address));
+
+    // Adresse — selskap viser separat besøk + post
+    if (isCompany) {
+      if (d.address)        fields += viewField('Besøksadresse', escHtml(d.address));
+      if (d.postal_address) fields += viewField('Postadresse',   escHtml(d.postal_address));
+    } else if (d.address) {
+      fields += viewField('Adresse', escHtml(d.address));
+    }
+
     if (d.created_at)  fields += viewField('Opprettet', fmtDate(d.created_at));
 
     // Sosiale URL-er som kompakte SVG-ikoner med brand-farge på hover
@@ -347,11 +384,14 @@
         });
       });
     } else {
-      // Person → show Gmail emails
+      // Person → show Gmail emails (søker mot ALLE registrerte e-poster)
       $('#view-crm-persons-section').hide();
-      if (d.email) {
+      const emailsForGmail = [];
+      if (d.email) emailsForGmail.push(d.email);
+      (d.extra_emails || []).forEach(e => { if (e.email) emailsForGmail.push(e.email); });
+      if (emailsForGmail.length) {
         $('#view-crm-gmail-section').show();
-        loadGmailEmails(d.email);
+        loadGmailEmails(emailsForGmail);
       } else {
         $('#view-crm-gmail-section').hide();
       }
@@ -368,9 +408,12 @@
   });
 
   /* ── Gmail loader ────────────────────────────────────────────────────────── */
-  function loadGmailEmails(email) {
+  // Aksepterer enten en string (én e-post) eller en array av e-poster.
+  function loadGmailEmails(emailOrList) {
     const $list   = $('#view-crm-gmail-list');
     const $status = $('#view-gmail-status');
+    const emails  = Array.isArray(emailOrList) ? emailOrList : [emailOrList];
+    const email   = emails.join(','); // backend split på komma
 
     if (!Edifice.gmail_enabled) {
       $list.html(

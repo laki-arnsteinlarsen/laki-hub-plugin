@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.2.2'); // social links: compact SVG icons with brand colors
+define('EDIFICE_VERSION', '1.3.0'); // CRM: multi-company per person + multi-email + visit/postal address
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

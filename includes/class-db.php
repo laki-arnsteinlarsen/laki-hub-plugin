@@ -9,26 +9,50 @@ class Edifice_DB {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
         dbDelta("CREATE TABLE {$wpdb->prefix}edifice_contacts (
-            id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            type          VARCHAR(50)  NOT NULL DEFAULT 'company',
-            company_id    BIGINT UNSIGNED DEFAULT NULL,
-            name          VARCHAR(255) NOT NULL,
-            org_nr        VARCHAR(20)  DEFAULT NULL,
-            email         VARCHAR(255) DEFAULT NULL,
-            phone         VARCHAR(50)  DEFAULT NULL,
-            address       VARCHAR(500) DEFAULT NULL,
-            category      TEXT         DEFAULT NULL,
-            status        ENUM('lead','active','inactive') NOT NULL DEFAULT 'active',
-            linkedin_url  VARCHAR(500) DEFAULT NULL,
-            instagram_url VARCHAR(500) DEFAULT NULL,
-            facebook_url  VARCHAR(500) DEFAULT NULL,
-            x_url         VARCHAR(500) DEFAULT NULL,
-            tiktok_url    VARCHAR(500) DEFAULT NULL,
-            custom_url    VARCHAR(500) DEFAULT NULL,
-            brreg_data    LONGTEXT     DEFAULT NULL,
-            notes         LONGTEXT     DEFAULT NULL,
-            created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            type            VARCHAR(50)  NOT NULL DEFAULT 'company',
+            company_id      BIGINT UNSIGNED DEFAULT NULL,
+            name            VARCHAR(255) NOT NULL,
+            org_nr          VARCHAR(20)  DEFAULT NULL,
+            email           VARCHAR(255) DEFAULT NULL,
+            phone           VARCHAR(50)  DEFAULT NULL,
+            address         VARCHAR(500) DEFAULT NULL,
+            postal_address  VARCHAR(500) DEFAULT NULL,
+            category        TEXT         DEFAULT NULL,
+            status          ENUM('lead','active','inactive') NOT NULL DEFAULT 'active',
+            linkedin_url    VARCHAR(500) DEFAULT NULL,
+            instagram_url   VARCHAR(500) DEFAULT NULL,
+            facebook_url    VARCHAR(500) DEFAULT NULL,
+            x_url           VARCHAR(500) DEFAULT NULL,
+            tiktok_url      VARCHAR(500) DEFAULT NULL,
+            custom_url      VARCHAR(500) DEFAULT NULL,
+            brreg_data      LONGTEXT     DEFAULT NULL,
+            notes           LONGTEXT     DEFAULT NULL,
+            created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) $c;");
+
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_contact_emails (
+            id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            contact_id  BIGINT UNSIGNED NOT NULL,
+            email       VARCHAR(255) NOT NULL,
+            label       VARCHAR(50)  DEFAULT NULL,
+            sort_order  INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_contact_id (contact_id)
+        ) $c;");
+
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_contact_companies (
+            id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            person_id   BIGINT UNSIGNED NOT NULL,
+            company_id  BIGINT UNSIGNED NOT NULL,
+            role        VARCHAR(100) DEFAULT NULL,
+            is_primary  TINYINT(1)   NOT NULL DEFAULT 0,
+            sort_order  INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_person_id  (person_id),
+            INDEX idx_company_id (company_id),
+            UNIQUE KEY unique_person_company (person_id, company_id)
         ) $c;");
 
         dbDelta("CREATE TABLE {$wpdb->prefix}edifice_projects (
@@ -227,6 +251,58 @@ class Edifice_DB {
                 }
                 update_option('edifice_phone_compact', true);
             }
+
+            // ── Migration 9: postal_address kolonne (besøksadr. + postadr.) ────
+            if (! isset($cols['postal_address'])) {
+                $wpdb->query("ALTER TABLE `$contact_table`
+                              ADD COLUMN `postal_address` VARCHAR(500) DEFAULT NULL AFTER `address`");
+            }
+        }
+
+        // ── Migration 10: opprett relaterte tabeller hvis de mangler ───────────
+        $emails_table    = $wpdb->prefix . 'edifice_contact_emails';
+        $companies_table = $wpdb->prefix . 'edifice_contact_companies';
+
+        if ($wpdb->get_var("SHOW TABLES LIKE '$emails_table'") !== $emails_table) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            $c = $wpdb->get_charset_collate();
+            dbDelta("CREATE TABLE $emails_table (
+                id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                contact_id  BIGINT UNSIGNED NOT NULL,
+                email       VARCHAR(255) NOT NULL,
+                label       VARCHAR(50)  DEFAULT NULL,
+                sort_order  INT UNSIGNED NOT NULL DEFAULT 0,
+                created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact_id (contact_id)
+            ) $c;");
+        }
+
+        if ($wpdb->get_var("SHOW TABLES LIKE '$companies_table'") !== $companies_table) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            $c = $wpdb->get_charset_collate();
+            dbDelta("CREATE TABLE $companies_table (
+                id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                person_id   BIGINT UNSIGNED NOT NULL,
+                company_id  BIGINT UNSIGNED NOT NULL,
+                role        VARCHAR(100) DEFAULT NULL,
+                is_primary  TINYINT(1)   NOT NULL DEFAULT 0,
+                sort_order  INT UNSIGNED NOT NULL DEFAULT 0,
+                created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_person_id  (person_id),
+                INDEX idx_company_id (company_id),
+                UNIQUE KEY unique_person_company (person_id, company_id)
+            ) $c;");
+        }
+
+        // ── Migration 11: kopier eksisterende company_id → junction-tabell ─────
+        if (! get_option('edifice_company_links_migrated', false)) {
+            $wpdb->query(
+                "INSERT IGNORE INTO `$companies_table` (person_id, company_id, is_primary, sort_order)
+                 SELECT id, company_id, 1, 0
+                 FROM   `$contact_table`
+                 WHERE  type = 'person' AND company_id IS NOT NULL"
+            );
+            update_option('edifice_company_links_migrated', true);
         }
 
         // ── Migration 4: Create product tables if missing (Produkter module) ────

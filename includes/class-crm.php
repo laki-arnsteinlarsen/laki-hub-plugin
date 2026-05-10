@@ -161,27 +161,81 @@ class Edifice_CRM {
         return $row ? self::decode_row($row) : null;
     }
 
-    /** Dekod category fra JSON til array */
+    /** Dekod category fra JSON + attach related data (extra emails, companies) */
     private static function decode_row(array $row): array {
         $row['category'] = !empty($row['category'])
             ? (json_decode($row['category'], true) ?: [])
             : [];
+        $row['extra_emails'] = self::get_extra_emails((int) $row['id']);
+        $row['companies']    = $row['type'] === 'person'
+            ? self::get_companies_for_person((int) $row['id'])
+            : [];
         return $row;
     }
 
+    /** Hent ekstra e-postadresser for en kontakt (utenom primær) */
+    public static function get_extra_emails(int $contact_id): array {
+        global $wpdb;
+        $t = $wpdb->prefix . 'edifice_contact_emails';
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT id, email, label FROM `$t`
+                 WHERE contact_id = %d
+                 ORDER BY sort_order ASC, id ASC",
+                $contact_id
+            ),
+            ARRAY_A
+        ) ?: [];
+    }
+
+    /** Returner alle e-poster (primær + ekstra) som flat array av strenger */
+    public static function get_all_emails_for_contact(int $contact_id): array {
+        global $wpdb;
+        $t = $wpdb->prefix . 'edifice_contacts';
+        $primary = $wpdb->get_var($wpdb->prepare("SELECT email FROM `$t` WHERE id = %d", $contact_id));
+        $extras  = self::get_extra_emails($contact_id);
+        $all     = [];
+        if ($primary)  $all[] = $primary;
+        foreach ($extras as $e) {
+            if (!empty($e['email'])) $all[] = $e['email'];
+        }
+        return array_values(array_unique($all));
+    }
+
+    /** Hent alle selskaper en person er tilknyttet */
+    public static function get_companies_for_person(int $person_id): array {
+        global $wpdb;
+        $j  = $wpdb->prefix . 'edifice_contact_companies';
+        $tc = $wpdb->prefix . 'edifice_contacts';
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT j.id, j.company_id, j.role, j.is_primary, j.sort_order, c.name AS company_name
+                 FROM `$j` j
+                 LEFT JOIN `$tc` c ON c.id = j.company_id
+                 WHERE j.person_id = %d
+                 ORDER BY j.is_primary DESC, j.sort_order ASC, c.name ASC",
+                $person_id
+            ),
+            ARRAY_A
+        ) ?: [];
+    }
+
     /**
-     * Returns all persons linked to a company. Returnerer FULL record så
-     * drill-down i view-modal kan åpne person-modalen direkte.
+     * Returns all persons linked to a company VIA junction-tabellen
+     * edifice_contact_companies. Returnerer FULL record så drill-down
+     * i view-modal kan åpne person-modalen direkte.
      */
     public static function get_persons_for_company(int $company_id): array {
         global $wpdb;
         $t = $wpdb->prefix . 'edifice_contacts';
+        $j = $wpdb->prefix . 'edifice_contact_companies';
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT c.*, p.name AS company_name
-                 FROM `$t` c
-                 LEFT JOIN `$t` p ON p.id = c.company_id
-                 WHERE c.type = 'person' AND c.company_id = %d
+                "SELECT c.*, comp.name AS company_name, j.role AS link_role, j.is_primary AS link_is_primary
+                 FROM `$j` j
+                 INNER JOIN `$t` c    ON c.id = j.person_id
+                 LEFT  JOIN `$t` comp ON comp.id = j.company_id
+                 WHERE j.company_id = %d AND c.type = 'person'
                  ORDER BY c.name ASC",
                 $company_id
             ),
@@ -233,33 +287,105 @@ class Edifice_CRM {
             $phone = preg_replace('/\s+/', '', sanitize_text_field($data['phone']));
         }
 
+        // Selskaper: parse JSON-array fra form (companies). Først valg blir primær.
+        // Format: [{company_id: 12, role: 'Styreleder'}, ...]
+        $companies_input = [];
+        if (!empty($data['companies_json'])) {
+            $decoded = json_decode(stripslashes($data['companies_json']), true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $c) {
+                    if (empty($c['company_id'])) continue;
+                    $companies_input[] = [
+                        'company_id' => (int) $c['company_id'],
+                        'role'       => sanitize_text_field($c['role'] ?? ''),
+                    ];
+                }
+            }
+        } elseif ($type === 'person' && !empty($data['company_id'])) {
+            // Bakoverkomp: enkel company_id fra gammel form
+            $companies_input[] = ['company_id' => (int) $data['company_id'], 'role' => ''];
+        }
+
+        // Primær company_id-cache (første link, NULL hvis ingen)
+        $primary_company_id = null;
+        if ($type === 'person' && !empty($companies_input)) {
+            $primary_company_id = (int) $companies_input[0]['company_id'];
+        }
+
         $fields = [
-            'type'          => $type,
-            'company_id'    => ($type === 'person' && !empty($data['company_id']))
-                                  ? (int) $data['company_id'] : null,
-            'name'          => sanitize_text_field($data['name']    ?? ''),
-            'org_nr'        => sanitize_text_field($data['org_nr']  ?? ''),
-            'email'         => sanitize_email($data['email']        ?? ''),
-            'phone'         => $phone,
-            'address'       => sanitize_textarea_field($data['address'] ?? ''),
-            'category'      => $category,
-            'status'        => sanitize_text_field($data['status']  ?? 'active'),
-            'linkedin_url'  => self::normalize_url($data['linkedin_url']  ?? ''),
-            'instagram_url' => self::normalize_url($data['instagram_url'] ?? ''),
-            'facebook_url'  => self::normalize_url($data['facebook_url']  ?? ''),
-            'x_url'         => self::normalize_url($data['x_url']         ?? ''),
-            'tiktok_url'    => self::normalize_url($data['tiktok_url']    ?? ''),
-            'custom_url'    => self::normalize_url($data['custom_url']    ?? ''),
-            'notes'         => sanitize_textarea_field($data['notes'] ?? ''),
-            'brreg_data'    => $brreg,
+            'type'           => $type,
+            'company_id'     => $primary_company_id,
+            'name'           => sanitize_text_field($data['name']    ?? ''),
+            'org_nr'         => sanitize_text_field($data['org_nr']  ?? ''),
+            'email'          => sanitize_email($data['email']        ?? ''),
+            'phone'          => $phone,
+            'address'        => sanitize_textarea_field($data['address']        ?? ''),
+            'postal_address' => sanitize_textarea_field($data['postal_address'] ?? ''),
+            'category'       => $category,
+            'status'         => sanitize_text_field($data['status']  ?? 'active'),
+            'linkedin_url'   => self::normalize_url($data['linkedin_url']  ?? ''),
+            'instagram_url'  => self::normalize_url($data['instagram_url'] ?? ''),
+            'facebook_url'   => self::normalize_url($data['facebook_url']  ?? ''),
+            'x_url'          => self::normalize_url($data['x_url']         ?? ''),
+            'tiktok_url'     => self::normalize_url($data['tiktok_url']    ?? ''),
+            'custom_url'     => self::normalize_url($data['custom_url']    ?? ''),
+            'notes'          => sanitize_textarea_field($data['notes']     ?? ''),
+            'brreg_data'     => $brreg,
         ];
 
         if (!empty($data['id'])) {
-            $wpdb->update($t, $fields, ['id' => (int) $data['id']]);
-            return (int) $data['id'];
+            $contact_id = (int) $data['id'];
+            $wpdb->update($t, $fields, ['id' => $contact_id]);
+        } else {
+            $wpdb->insert($t, $fields);
+            $contact_id = (int) $wpdb->insert_id;
         }
-        $wpdb->insert($t, $fields);
-        return $wpdb->insert_id ?: false;
+        if (!$contact_id) return false;
+
+        // Sync selskap-linker (kun for personer)
+        if ($type === 'person') {
+            self::sync_company_links($contact_id, $companies_input);
+        }
+        // Sync ekstra e-poster
+        self::sync_extra_emails($contact_id, $data['extra_emails_json'] ?? '');
+
+        return $contact_id;
+    }
+
+    /** Erstatt alle person→selskap-linker for en person */
+    private static function sync_company_links(int $person_id, array $links): void {
+        global $wpdb;
+        $j = $wpdb->prefix . 'edifice_contact_companies';
+        $wpdb->delete($j, ['person_id' => $person_id]);
+        foreach ($links as $i => $link) {
+            $wpdb->insert($j, [
+                'person_id'  => $person_id,
+                'company_id' => (int) $link['company_id'],
+                'role'       => $link['role'] ?? '',
+                'is_primary' => $i === 0 ? 1 : 0,
+                'sort_order' => $i,
+            ]);
+        }
+    }
+
+    /** Erstatt alle ekstra e-poster for en kontakt */
+    private static function sync_extra_emails(int $contact_id, string $json): void {
+        global $wpdb;
+        $t = $wpdb->prefix . 'edifice_contact_emails';
+        $wpdb->delete($t, ['contact_id' => $contact_id]);
+        $decoded = json_decode(stripslashes($json), true);
+        if (!is_array($decoded)) return;
+        $i = 0;
+        foreach ($decoded as $e) {
+            $email = sanitize_email($e['email'] ?? '');
+            if (!$email) continue;
+            $wpdb->insert($t, [
+                'contact_id' => $contact_id,
+                'email'      => $email,
+                'label'      => sanitize_text_field($e['label'] ?? ''),
+                'sort_order' => $i++,
+            ]);
+        }
     }
 
     public static function delete(int $id): bool {
