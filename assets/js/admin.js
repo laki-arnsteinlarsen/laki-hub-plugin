@@ -118,9 +118,28 @@
     const $modal = $(this).closest('.lh-modal-body');
     $modal.find('[name=name]').val(e.navn || '');
     $modal.find('[name=org_nr]').val(e.organisasjonsnummer || '');
-    const adr    = e.forretningsadresse || e.postadresse || {};
-    const addrStr = [(adr.adresse || []).join(' '), (adr.postnummer || '') + ' ' + (adr.poststed || '')].filter(Boolean).join(', ');
-    $modal.find('[name=address]').val(addrStr);
+
+    // Brreg har to separate adresse-objekter — bruk begge:
+    //   forretningsadresse → besøksadresse (address)
+    //   postadresse        → postadresse (postal_address)
+    // Hvis bare én er tilgjengelig, fyll besøksadresse med den.
+    function brregAddrToString(adr) {
+      if (!adr) return '';
+      return [(adr.adresse || []).join(' '),
+              (adr.postnummer || '') + ' ' + (adr.poststed || '')]
+        .map(s => s.trim()).filter(Boolean).join(', ');
+    }
+    const visit  = brregAddrToString(e.forretningsadresse);
+    const postal = brregAddrToString(e.postadresse);
+    if (visit) {
+      $modal.find('[name=address]').val(visit);
+      $modal.find('[name=postal_address]').val(postal && postal !== visit ? postal : '');
+    } else if (postal) {
+      // Bare postadresse tilgjengelig — fall tilbake til besøksadresse-feltet
+      $modal.find('[name=address]').val(postal);
+      $modal.find('[name=postal_address]').val('');
+    }
+
     $modal.find('[name=brreg_data]').val(JSON.stringify(e));
     $(this).closest('.lh-brreg-results').hide();
   });

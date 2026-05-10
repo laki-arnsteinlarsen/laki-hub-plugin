@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.3.1'); // address: visit+postal for all + Geonorge autocomplete
+define('EDIFICE_VERSION', '1.3.2'); // brreg autofyll: forretningsadresse → address, postadresse → postal_address
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
