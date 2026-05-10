@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.4.8'); // products: Etsy som kanal (ikon 🎨, brand-farge #F1641E)
+define('EDIFICE_VERSION', '1.4.9'); // etsy: Open API v3 PKCE-OAuth + listing-sync (klar for godkjent keystring)
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -23,6 +23,7 @@ require_once EDIFICE_DIR . 'includes/class-revenue.php';
 require_once EDIFICE_DIR . 'includes/class-products-digital.php';
 require_once EDIFICE_DIR . 'includes/class-sync-products.php';
 require_once EDIFICE_DIR . 'includes/class-prospects.php';
+require_once EDIFICE_DIR . 'includes/class-etsy.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
 
@@ -87,6 +88,12 @@ add_action('wp_ajax_edifice_prospect_add_to_crm',   ['Edifice_Prospects', 'ajax_
 add_action('wp_ajax_edifice_prospect_skip',         ['Edifice_Prospects', 'ajax_skip']);
 add_action('wp_ajax_edifice_prospect_rescan',       ['Edifice_Prospects', 'ajax_rescan']);
 add_action('wp_ajax_edifice_prospect_truncate',     ['Edifice_Prospects', 'ajax_truncate']);
+
+// AJAX handlers — Etsy
+add_action('wp_ajax_edifice_etsy_get_auth_url',     ['Edifice_Etsy', 'ajax_get_auth_url']);
+add_action('wp_ajax_edifice_etsy_disconnect',       ['Edifice_Etsy', 'ajax_disconnect']);
+add_action('wp_ajax_edifice_etsy_sync_listings',    ['Edifice_Etsy', 'ajax_sync_listings']);
+add_action('wp_ajax_edifice_etsy_verify',           ['Edifice_Etsy', 'ajax_verify']);
 add_action('wp_ajax_edifice_register_promptbase',    ['Edifice_Sync_Products', 'ajax_register_promptbase_product']);
 
 // Serve volcano favicon at /favicon.ico so Chrome updates its favicon cache
