@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.4.5'); // hot-fix: Brreg ansatte-bucket bug — fra=1 + post-filter for ≥2
+define('EDIFICE_VERSION', '1.4.6'); // prospect: sorterbare kolonner
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

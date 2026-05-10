@@ -60,15 +60,15 @@ $counts    = Edifice_Prospects::counts();
 
     <div class="lh-table-wrap">
       <?php if ($prospects): ?>
-      <table class="lh-table" id="prospects-table">
+      <table class="lh-table lh-sortable" id="prospects-table">
         <thead>
           <tr>
-            <th>Navn</th>
-            <th>Kommune</th>
-            <th>Bransje</th>
-            <th>Ansatte</th>
-            <th>Omsetning</th>
-            <th>Score</th>
+            <th data-sort-key="name"     data-sort-type="text"   data-sort-default="asc">Navn</th>
+            <th data-sort-key="kommune"  data-sort-type="text"   data-sort-default="asc">Kommune</th>
+            <th data-sort-key="nace"     data-sort-type="text"   data-sort-default="asc">Bransje</th>
+            <th data-sort-key="emp"      data-sort-type="number" data-sort-default="desc">Ansatte</th>
+            <th data-sort-key="revenue"  data-sort-type="number" data-sort-default="desc">Omsetning</th>
+            <th data-sort-key="score"    data-sort-type="number" data-sort-default="desc" class="lh-sort-active lh-sort-desc">Score</th>
             <th></th>
           </tr>
         </thead>
@@ -82,7 +82,13 @@ $counts    = Edifice_Prospects::counts();
         ?>
           <tr class="lh-clickable-row lh-view-prospect-btn"
               data-record="<?= esc_attr(json_encode($p)) ?>"
-              data-score="<?= $score ?>">
+              data-score="<?= $score ?>"
+              data-sort-name="<?= esc_attr(strtolower($p['name'])) ?>"
+              data-sort-kommune="<?= esc_attr(strtolower($p['kommune_navn'] ?? '')) ?>"
+              data-sort-nace="<?= esc_attr($p['nace_code'] ?? '') ?>"
+              data-sort-emp="<?= $p['employees'] !== null ? (int) $p['employees'] : '' ?>"
+              data-sort-revenue="<?= $rev > 0 ? $rev : '' ?>"
+              data-sort-score="<?= $score ?>">
             <td>
               <strong>🏢 <?= esc_html($p['name']) ?></strong>
               <?php if (!empty($p['org_nr'])): ?>
@@ -170,6 +176,32 @@ $counts    = Edifice_Prospects::counts();
   </div>
 </div>
 
+<style>
+/* Sorterbare kolonneoverskrifter */
+#prospects-table.lh-sortable thead th[data-sort-key] {
+  position: relative;
+  padding-right: 18px;
+  transition: color .15s;
+}
+#prospects-table.lh-sortable thead th[data-sort-key]:hover {
+  color: #1e3a5f;
+}
+#prospects-table.lh-sortable thead th[data-sort-key]::after {
+  content: '↕';
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: .25;
+  font-size: 11px;
+}
+#prospects-table.lh-sortable thead th.lh-sort-active::after {
+  opacity: .9;
+  color: #1e3a5f;
+}
+#prospects-table.lh-sortable thead th.lh-sort-asc::after  { content: '▲' }
+#prospects-table.lh-sortable thead th.lh-sort-desc::after { content: '▼' }
+</style>
 <script>
 (function () {
   const $ = jQuery;
@@ -322,6 +354,44 @@ $counts    = Edifice_Prospects::counts();
   // Action-celler stopper propagation til row-click
   document.querySelectorAll('#prospects-table .actions').forEach(td => {
     td.addEventListener('click', e => e.stopPropagation());
+  });
+
+  // ── Sortering på kolonneoverskrifter ────────────────────────────────────
+  document.querySelectorAll('#prospects-table thead th[data-sort-key]').forEach(th => {
+    th.style.cursor = 'pointer';
+    th.style.userSelect = 'none';
+    th.addEventListener('click', function () {
+      const key  = this.dataset.sortKey;
+      const type = this.dataset.sortType || 'text';
+      const def  = this.dataset.sortDefault || 'asc';
+      // Toggle: hvis allerede aktiv, snu retning. Hvis ikke, bruk default.
+      const wasActive = this.classList.contains('lh-sort-active');
+      const wasDesc   = this.classList.contains('lh-sort-desc');
+      const newDesc   = wasActive ? !wasDesc : (def === 'desc');
+
+      // Rens alle headers
+      document.querySelectorAll('#prospects-table thead th').forEach(h => {
+        h.classList.remove('lh-sort-active', 'lh-sort-asc', 'lh-sort-desc');
+      });
+      this.classList.add('lh-sort-active', newDesc ? 'lh-sort-desc' : 'lh-sort-asc');
+
+      // Hent rader, sort, sett tilbake
+      const tbody = document.querySelector('#prospects-table tbody');
+      const rows  = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const va = a.dataset['sort' + key.charAt(0).toUpperCase() + key.slice(1)] || '';
+        const vb = b.dataset['sort' + key.charAt(0).toUpperCase() + key.slice(1)] || '';
+        // Tomme verdier alltid nederst, uavhengig av retning
+        if (va === '' && vb === '') return 0;
+        if (va === '') return 1;
+        if (vb === '') return -1;
+        let cmp;
+        if (type === 'number') cmp = parseFloat(va) - parseFloat(vb);
+        else cmp = va.localeCompare(vb, 'nb');
+        return newDesc ? -cmp : cmp;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+    });
   });
 
   // ── Tøm prospekt-data ───────────────────────────────────────────────────
