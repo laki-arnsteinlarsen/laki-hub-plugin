@@ -70,6 +70,114 @@ class Edifice_Gmail {
         delete_option(self::OPT_TOKENS);
     }
 
+    /**
+     * Verifiser at Gmail API faktisk fungerer for denne tilkoblingen.
+     * En gyldig OAuth-token kan eksistere selv om Gmail API ikke er
+     * aktivert i Google Cloud-prosjektet — dette tester den faktiske
+     * API-en med et lett kall til /users/me/profile.
+     *
+     * Returnerer:
+     *   ['ok' => true,  'email' => 'arnstein@…', 'messages_total' => N]
+     *   ['ok' => false, 'error' => '...', 'reason' => '...',
+     *    'activation_url' => '...', 'detail' => mixed]
+     *
+     * Spesielle 'reason'-verdier:
+     *   'no_token'             — ingen access_token lagret
+     *   'gmail_api_disabled'   — 403 SERVICE_DISABLED / accessNotConfigured
+     *   'invalid_credentials'  — 401, må koble til på nytt
+     *   'http_error'           — annen non-200 respons
+     *   'network_error'        — wp_remote_get returnerte WP_Error
+     */
+    public static function verify_api_access(): array {
+        $token = self::get_access_token();
+        if (!$token) {
+            return [
+                'ok'     => false,
+                'reason' => 'no_token',
+                'error'  => 'Ingen gyldig access token. Koble til Gmail på nytt.',
+            ];
+        }
+
+        $resp = wp_remote_get('https://gmail.googleapis.com/gmail/v1/users/me/profile', [
+            'headers' => ['Authorization' => 'Bearer ' . $token],
+            'timeout' => 8,
+        ]);
+
+        if (is_wp_error($resp)) {
+            return [
+                'ok'     => false,
+                'reason' => 'network_error',
+                'error'  => 'Kunne ikke nå Gmail API: ' . $resp->get_error_message(),
+            ];
+        }
+
+        $code = (int) wp_remote_retrieve_response_code($resp);
+        $body = json_decode(wp_remote_retrieve_body($resp), true);
+
+        if ($code === 200) {
+            return [
+                'ok'             => true,
+                'email'          => $body['emailAddress']  ?? '',
+                'messages_total' => (int) ($body['messagesTotal'] ?? 0),
+            ];
+        }
+
+        // 401 — token-problem
+        if ($code === 401) {
+            return [
+                'ok'     => false,
+                'reason' => 'invalid_credentials',
+                'error'  => 'Tokenet ble avvist (401). Koble til Gmail på nytt.',
+                'detail' => $body['error'] ?? null,
+            ];
+        }
+
+        // 403 — sjekk om det er fordi Gmail API ikke er aktivert
+        if ($code === 403) {
+            $api_disabled   = false;
+            $activation_url = '';
+            foreach (($body['error']['details'] ?? []) as $d) {
+                $reason   = $d['reason'] ?? '';
+                $metadata = $d['metadata'] ?? [];
+                if ($reason === 'SERVICE_DISABLED' || !empty($metadata['activationUrl'])) {
+                    $api_disabled   = true;
+                    $activation_url = $metadata['activationUrl'] ?? '';
+                    break;
+                }
+            }
+            // Fallback — sjekk top-level errors-array (eldre API-respons)
+            foreach (($body['error']['errors'] ?? []) as $e) {
+                if (($e['reason'] ?? '') === 'accessNotConfigured') {
+                    $api_disabled = true;
+                }
+            }
+
+            if ($api_disabled) {
+                return [
+                    'ok'             => false,
+                    'reason'         => 'gmail_api_disabled',
+                    'error'          => 'Gmail API er ikke aktivert i Google Cloud-prosjektet ditt. Du må aktivere det før integrasjonen kan hente e-poster.',
+                    'activation_url' => $activation_url,
+                    'detail'         => $body['error'] ?? null,
+                ];
+            }
+
+            return [
+                'ok'     => false,
+                'reason' => 'http_error',
+                'error'  => '403 Forbidden: ' . ($body['error']['message'] ?? 'Ingen detaljer'),
+                'detail' => $body['error'] ?? null,
+            ];
+        }
+
+        return [
+            'ok'     => false,
+            'reason' => 'http_error',
+            'error'  => 'HTTP ' . $code . ': ' . ($body['error']['message'] ?? 'Ingen detaljer'),
+            'detail' => $body['error'] ?? null,
+        ];
+    }
+
     // ── Access token (with auto-refresh) ───────────────────────────────────
 
     public static function get_access_token(): string {

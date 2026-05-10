@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.1.6'); // gmail: structured error responses + query visibility
+define('EDIFICE_VERSION', '1.1.7'); // gmail: auto-verify API access after OAuth + test connection button
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

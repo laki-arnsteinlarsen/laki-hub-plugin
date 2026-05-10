@@ -1,15 +1,64 @@
 <?php
 defined('ABSPATH') || exit;
 
+/**
+ * Render et notice-blokk for et Gmail API-verifiseringsresultat.
+ * Brukes både rett etter OAuth-callback og fra "Test tilkobling"-knappen.
+ */
+function edifice_gmail_render_verify_notice(array $verify): void {
+    if (!empty($verify['ok'])) {
+        $email = $verify['email'] ?? '';
+        $count = number_format_i18n((int) ($verify['messages_total'] ?? 0));
+        echo '<div class="notice notice-success"><p>✅ Gmail API verifisert. Innlogget som <strong>'
+             . esc_html($email) . '</strong> · ' . esc_html($count) . ' meldinger totalt.</p></div>';
+        return;
+    }
+
+    $reason = $verify['reason'] ?? '';
+    $msg    = $verify['error']  ?? 'Ukjent feil';
+
+    if ($reason === 'gmail_api_disabled') {
+        $url = $verify['activation_url'] ?? '';
+        echo '<div class="notice notice-error" style="border-left-color:#dc2626"><p style="font-size:14px">'
+           . '<strong>⚠️ Gmail API er ikke aktivert</strong><br>'
+           . 'OAuth-tilkoblingen lyktes, men Gmail API er ikke aktivert i Google Cloud-prosjektet ditt. Du må aktivere det før e-poster kan hentes.'
+           . ($url ? '<br><br><a href="' . esc_url($url) . '" target="_blank" rel="noopener" class="button button-primary">'
+                  . '🚀 Aktiver Gmail API i Google Cloud →</a>' : '')
+           . '<br><br><span style="font-size:12px;color:#6b6b70">Etter aktivering, vent 1–2 minutter og klikk «Test tilkobling» nedenfor.</span>'
+           . '</p></div>';
+        return;
+    }
+
+    if ($reason === 'invalid_credentials') {
+        echo '<div class="notice notice-error"><p><strong>🔒 Tokenet ble avvist.</strong> ' . esc_html($msg)
+           . ' Trykk «Koble fra», og deretter «Koble til Gmail» på nytt.</p></div>';
+        return;
+    }
+
+    echo '<div class="notice notice-error"><p>❌ ' . esc_html($msg) . '</p></div>';
+}
+
 // Handle Gmail OAuth callback (Google redirects here with ?code=…&state=…)
 if (!empty($_GET['_gmail_callback']) && !empty($_GET['code'])) {
     $ok = Edifice_Gmail::handle_callback(
         sanitize_text_field($_GET['code']),
         sanitize_text_field($_GET['state'] ?? '')
     );
-    echo $ok
-        ? '<div class="notice notice-success"><p>✅ Gmail koblet til.</p></div>'
-        : '<div class="notice notice-error"><p>Gmail-kobling feilet. Sjekk Client ID/Secret og prøv igjen.</p></div>';
+    if (!$ok) {
+        echo '<div class="notice notice-error"><p>Gmail-kobling feilet. Sjekk Client ID/Secret og prøv igjen.</p></div>';
+    } else {
+        // Tokenet er lagret — verifiser at Gmail API faktisk svarer
+        echo '<div class="notice notice-success"><p>✅ OAuth-tilkobling fullført. Verifiserer Gmail API …</p></div>';
+        $verify = Edifice_Gmail::verify_api_access();
+        edifice_gmail_render_verify_notice($verify);
+    }
+}
+
+// Handle "Test tilkobling"-knapp
+if (!empty($_POST['_gmail_test'])) {
+    check_admin_referer('edifice_gmail_test');
+    $verify = Edifice_Gmail::verify_api_access();
+    edifice_gmail_render_verify_notice($verify);
 }
 
 // Handle disconnect
@@ -74,9 +123,16 @@ $auth_url  = Edifice_Gmail::get_auth_url();
             <div style="font-size:12px;color:var(--lh-muted);margin-top:2px">E-posthistorikk er tilgjengelig i kontaktvisning (person)</div>
           </div>
         </div>
-        <a href="<?= esc_url(wp_nonce_url(admin_url('admin.php?page=edifice-settings&_gmail_disconnect=1'), 'edifice_gmail_disconnect')) ?>"
-           class="lh-btn lh-btn-danger"
-           onclick="return confirm('Koble fra Gmail?')">Koble fra Gmail</a>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <form method="post" style="margin:0;display:inline">
+            <?php wp_nonce_field('edifice_gmail_test'); ?>
+            <input type="hidden" name="_gmail_test" value="1">
+            <button type="submit" class="lh-btn lh-btn-secondary">🧪 Test tilkobling</button>
+          </form>
+          <a href="<?= esc_url(wp_nonce_url(admin_url('admin.php?page=edifice-settings&_gmail_disconnect=1'), 'edifice_gmail_disconnect')) ?>"
+             class="lh-btn lh-btn-danger"
+             onclick="return confirm('Koble fra Gmail?')">Koble fra Gmail</a>
+        </div>
 
       <?php else: ?>
         <!-- Setup form -->
