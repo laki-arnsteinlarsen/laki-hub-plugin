@@ -172,6 +172,20 @@ class Edifice_Prospects {
         );
     }
 
+    /**
+     * Normaliser URL fra Brreg: prepender https:// hvis schema mangler.
+     * Brreg returnerer ofte "www.eksempel.no" uten protokoll, som ville
+     * blitt tolket som relativ URL i href-attributter.
+     */
+    private static function normalize_website(?string $raw): ?string {
+        $raw = trim((string) $raw);
+        if ($raw === '') return null;
+        if (!preg_match('#^https?://#i', $raw)) {
+            $raw = 'https://' . ltrim($raw, '/');
+        }
+        return esc_url_raw($raw);
+    }
+
     private static function insert_from_brreg(array $e): int {
         global $wpdb;
         $t = $wpdb->prefix . 'edifice_prospects';
@@ -198,7 +212,7 @@ class Edifice_Prospects {
             'kommune_nr'        => $forr['kommunenummer'] ?? null,
             'kommune_navn'      => $forr['kommune'] ?? null,
             'registration_date' => $reg_dato ?: null,
-            'website'           => $e['hjemmeside'] ?? null,
+            'website'           => self::normalize_website($e['hjemmeside'] ?? null),
             'email'             => $e['epostadresse'] ?? null,
             'phone'             => $e['telefon'] ?? ($e['mobil'] ?? null),
             'address'           => $addr_to_str($forr),
@@ -207,6 +221,28 @@ class Edifice_Prospects {
             'last_synced_at'    => current_time('mysql'),
         ]);
         return (int) $wpdb->insert_id;
+    }
+
+    /**
+     * Migrer eksisterende prospekter med rå hjemmeside-URLer (uten schema).
+     * Idempotent via flag-option.
+     */
+    public static function migrate_websites(): void {
+        if (get_option('edifice_prospect_urls_normalized', false)) return;
+        global $wpdb;
+        $t = $wpdb->prefix . 'edifice_prospects';
+        $rows = $wpdb->get_results(
+            "SELECT id, website FROM `$t`
+             WHERE website IS NOT NULL AND website <> ''
+               AND website NOT LIKE 'http://%' AND website NOT LIKE 'https://%'"
+        );
+        foreach ($rows as $r) {
+            $clean = self::normalize_website($r->website);
+            if ($clean) {
+                $wpdb->update($t, ['website' => $clean], ['id' => $r->id]);
+            }
+        }
+        update_option('edifice_prospect_urls_normalized', true);
     }
 
     // ── Scraping: WP-deteksjon ───────────────────────────────────────────────

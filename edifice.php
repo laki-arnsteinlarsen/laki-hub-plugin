@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.4.0'); // Prospekter-modul: advisory + styreoppdrag fra Brreg
+define('EDIFICE_VERSION', '1.4.1'); // fix: prospect website URL normalisering
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -35,6 +35,7 @@ register_activation_hook(__FILE__, function () {
 
 add_action('plugins_loaded', function () {
     Edifice_DB::maybe_migrate();
+    Edifice_Prospects::migrate_websites();
     Edifice_Sync_Products::init();
     Edifice_Admin::init();
     Edifice_Frontend::init();

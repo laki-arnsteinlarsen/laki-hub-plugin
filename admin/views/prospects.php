@@ -213,7 +213,11 @@ $counts    = Edifice_Prospects::counts();
     html += fmt('Etablert', d.registration_date ? escHtml(d.registration_date) : '');
     html += fmt('Omsetning', escHtml(revStr));
     html += fmt('Advisory-score', `<span class="lh-badge lh-badge-${parseInt(d.advisory_score)>=50?'green':parseInt(d.advisory_score)>=30?'yellow':'gray'}">${d.advisory_score}</span>`);
-    html += fmt('Hjemmeside', d.website ? `<a href="${escHtml(d.website)}" target="_blank" rel="noopener">${escHtml(d.website)}</a>` : '');
+    // Defensiv: hvis website mangler schema (eldre rader pre-1.4.1), prepend https://
+    const websiteHref = d.website
+      ? (/^https?:\/\//i.test(d.website) ? d.website : 'https://' + d.website.replace(/^\/+/, ''))
+      : '';
+    html += fmt('Hjemmeside', websiteHref ? `<a href="${escHtml(websiteHref)}" target="_blank" rel="noopener">${escHtml(d.website)}</a>` : '');
     html += fmt('E-post', d.email ? `<a href="mailto:${escHtml(d.email)}">${escHtml(d.email)}</a>` : '');
     html += fmt('Telefon', d.phone ? `<a href="tel:${escHtml(d.phone)}">${escHtml(d.phone)}</a>` : '');
     html += fmt('Adresse', escHtml(d.address));
