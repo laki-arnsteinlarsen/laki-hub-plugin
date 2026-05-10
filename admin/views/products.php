@@ -8,6 +8,7 @@ $channels = Edifice_Products_Digital::get_channels_summary();
 $channel_config = [
     'PromptBase' => ['icon' => '🤖', 'label' => 'PromptBase', 'color' => '#6366f1'],
     'Gumroad'    => ['icon' => '🛒', 'label' => 'Gumroad',    'color' => '#f59e0b'],
+    'Etsy'       => ['icon' => '🎨', 'label' => 'Etsy',       'color' => '#F1641E'],
     'KDP'        => ['icon' => '📚', 'label' => 'KDP',        'color' => '#10b981'],
     'Upwork'     => ['icon' => '💼', 'label' => 'Upwork',     'color' => '#3b82f6'],
 ];

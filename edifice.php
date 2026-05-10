@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.4.7'); // prospect: score-breakdown + tydelig kontaktinfo i view-modal
+define('EDIFICE_VERSION', '1.4.8'); // products: Etsy som kanal (ikon 🎨, brand-farge #F1641E)
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
