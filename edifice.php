@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.4.2'); // prospect: ansatte-fallback fra underenheter + nøytral score for ukjent
+define('EDIFICE_VERSION', '1.4.3'); // prospect: kalibrert modell — 14 NACE, ansatte 2-25, omsetning 3-20 sweet, ung-modent fokus
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

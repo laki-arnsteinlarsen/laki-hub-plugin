@@ -14,17 +14,24 @@ defined('ABSPATH') || exit;
  */
 class Edifice_Prospects {
 
-    // Inkluder-sett for advisory + styreoppdrag-segmentet (NACE 2-siffer)
-    // B2B-tjenester + tech der Arnsteins erfaring er sterkest
+    // Inkluder-sett for advisory + styreoppdrag-segmentet (NACE 2-siffer).
+    // Kalibrert 10.05.2026: utvidet fra 8 til 14 koder for å fange Arnsteins
+    // bredere bransje-erfaring (telecom, helse, R&D, varehandel inkludert).
     const NACE_INCLUDE = [
+        '46' => 'Engroshandel',
+        '47' => 'Detaljhandel',
+        '61' => 'Telekommunikasjon',
         '62' => 'Tjenester tilknyttet IT',
         '63' => 'Informasjonstjenester',
         '64' => 'Finansieringsvirksomhet',
         '68' => 'Eiendomsdrift',
         '70' => 'Forretningstjenester',
         '71' => 'Teknisk konsulent',
+        '72' => 'Forskning og utviklingsarbeid',
         '73' => 'Reklame og markedsundersøkelser',
         '78' => 'Arbeidskrafttjenester',
+        '82' => 'Annen forretningsmessig tjenesteyting',
+        '86' => 'Helsetjenester',
     ];
 
     // Geografisk fokus: Oslo + Akershus + Østfold + Buskerud + Innlandet
@@ -36,9 +43,12 @@ class Edifice_Prospects {
     const REGNSKAP_BASE   = 'https://data.brreg.no/regnskapsregisteret/regnskap/';
     const IMPORT_BATCH_SZ = 50; // antall enheter per import-runde
 
-    // Sweet spot for advisory-segmentet
-    const ADVISORY_EMP_MIN = 5;
-    const ADVISORY_EMP_MAX = 50;
+    // Størrelses-filter (kalibrert 10.05.2026)
+    // Tidligere 5-50, nå 2-25 — flytter nedre grense for å fange små eier-
+    // drevne kompetansebedrifter, kapper toppen for å unngå selskaper
+    // med moden intern struktur.
+    const ADVISORY_EMP_MIN = 2;
+    const ADVISORY_EMP_MAX = 25;
 
     // ── Queries ──────────────────────────────────────────────────────────────
 
@@ -376,34 +386,40 @@ class Edifice_Prospects {
         $emp = $emp_known ? (int) $row['employees'] : null;
         $rev = (float) $row['revenue_latest'];
 
-        // Ansatte sweet spot 5-50: stor nok til å trenge ekstern hjelp,
-        // liten nok til at en enkelt rådgiver gjør forskjell.
-        // Ukjent ansatte gir nøytral middels-score for å unngå å straffe
-        // bedrifter med mangelfull NAV-rapportering (eierdrevne AS osv.)
+        // ── Ansatte (maks 30) ──────────────────────────────────────────────
+        // Kalibrert 10.05.2026: filter 2-25, sweet 5-15.
+        // Ukjent ansatte gir nøytral middels-score (+10) for å unngå å
+        // straffe bedrifter med mangelfull NAV-rapportering.
         if (!$emp_known)                        $advisory += 10;  // nøytral for ukjent
-        elseif ($emp >= 5 && $emp <= 15)        $advisory += 30;  // ideal — minst kapasitet internt
-        elseif ($emp >= 16 && $emp <= 30)       $advisory += 25;  // veldig godt
-        elseif ($emp >= 31 && $emp <= 50)       $advisory += 15;  // bra
-        elseif ($emp >= 51 && $emp <= 100)      $advisory += 5;   // grenseland — har gjerne intern struktur
+        elseif ($emp >= 5 && $emp <= 15)        $advisory += 30;  // sweet spot
+        elseif ($emp >= 16 && $emp <= 25)       $advisory += 25;  // veldig godt
+        elseif ($emp >= 2 && $emp <= 4)         $advisory += 15;  // små men relevante (eier-drevne kompetansebedrifter)
 
-        // Omsetnings-signaler — sterkest indikator for advisory
+        // ── Omsetning (maks 35) — sterkeste enkeltsignal ───────────────────
+        // Kalibrert 10.05.2026: sweet 3-20 MNOK (var 5-25), gir +5 for <1.
         if ($rev > 0) {
-            if ($rev >= 5_000_000  && $rev <= 25_000_000)  $advisory += 35;  // sweet spot
-            elseif ($rev >= 25_000_000 && $rev <= 75_000_000) $advisory += 25;
-            elseif ($rev >= 1_000_000 && $rev <  5_000_000)   $advisory += 15;
-            elseif ($rev >= 75_000_000)                       $advisory += 5;
-            // < 1 MNOK gir 0 — for tidlig fase / for små
+            if ($rev >= 3_000_000  && $rev <= 20_000_000)     $advisory += 35;  // sweet spot
+            elseif ($rev >= 20_000_000 && $rev <= 50_000_000) $advisory += 20;
+            elseif ($rev >= 1_000_000 && $rev <  3_000_000)   $advisory += 15;
+            elseif ($rev > 0 && $rev < 1_000_000)             $advisory += 5;   // tidlig fase, lavt prio
+            elseif ($rev > 50_000_000)                        $advisory += 5;   // for stor (sjelden gitt 25-emp-tak)
         }
+        // mangler/0 gir 0 — sterk negativ indikator (typisk holdings/forsinket levering)
 
-        // Kontaktinfo finnes — gjør outreach mulig
+        // ── Kontaktinfo (maks 8) — outreach-friksjon ───────────────────────
         if (!empty($row['email']))              $advisory += 5;
         if (!empty($row['phone']))              $advisory += 3;
 
-        // Etablert (>2 år) — har overlevd post-startup-fasen
+        // ── Modenhet (maks 10) — alder ─────────────────────────────────────
+        // Kalibrert 10.05.2026: sweet 2-5 år (var 2-15). Arnstein jobber
+        // gjerne fra oppstart, peak-verdi i tidlig vekst-fase.
         if (!empty($row['registration_date'])) {
             $age_years = (time() - strtotime($row['registration_date'])) / (365 * 86400);
-            if ($age_years >= 2 && $age_years <= 15) $advisory += 10;  // ideal — etablert men ikke gammel og rigid
-            elseif ($age_years > 15)                 $advisory += 3;
+            if ($age_years >= 2 && $age_years <= 5)        $advisory += 10;  // sweet spot
+            elseif ($age_years > 5  && $age_years <= 15)   $advisory += 7;   // etablert
+            elseif ($age_years >= 0 && $age_years < 2)     $advisory += 5;   // helt fersk — han tar disse også
+            elseif ($age_years > 15 && $age_years <= 25)   $advisory += 3;   // mellomalder
+            elseif ($age_years > 25)                       $advisory += 1;   // gammel/rigid
         }
 
         // ── Hosting-score (paused — beregnes som referanse, brukes ikke) ────
