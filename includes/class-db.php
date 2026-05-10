@@ -16,6 +16,7 @@ class Edifice_DB {
             org_nr          VARCHAR(20)  DEFAULT NULL,
             email           VARCHAR(255) DEFAULT NULL,
             phone           VARCHAR(50)  DEFAULT NULL,
+            mobile          VARCHAR(50)  DEFAULT NULL,
             address         VARCHAR(500) DEFAULT NULL,
             postal_address  VARCHAR(500) DEFAULT NULL,
             category        TEXT         DEFAULT NULL,
@@ -256,6 +257,12 @@ class Edifice_DB {
             if (! isset($cols['postal_address'])) {
                 $wpdb->query("ALTER TABLE `$contact_table`
                               ADD COLUMN `postal_address` VARCHAR(500) DEFAULT NULL AFTER `address`");
+            }
+
+            // ── Migration 12: mobile-kolonne (egen for mobil) ──────────────────
+            if (! isset($cols['mobile'])) {
+                $wpdb->query("ALTER TABLE `$contact_table`
+                              ADD COLUMN `mobile` VARCHAR(50) DEFAULT NULL AFTER `phone`");
             }
         }
 

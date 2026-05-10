@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.3.3'); // brreg autofyll: epostadresse + telefon (cc-aware)
+define('EDIFICE_VERSION', '1.3.4'); // mobile-felt + brreg autofyll mobil + hjemmeside
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

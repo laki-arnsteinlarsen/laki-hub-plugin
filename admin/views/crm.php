@@ -228,6 +228,20 @@ $n_persons   = count($contacts) - $n_companies;
           </div>
         </div>
 
+        <div class="lh-form-row">
+          <label>Mobil</label>
+          <div style="display:flex;gap:6px">
+            <select name="mobile_cc" style="max-width:140px;flex:0 0 auto">
+              <?php foreach ($country_codes as $cn): ?>
+                <option value="<?= esc_attr($cn['cc']) ?>" data-flag="<?= esc_attr($cn['flag']) ?>">
+                  <?= esc_html($cn['flag'] . ' ' . $cn['cc'] . ' ' . $cn['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <input type="text" name="mobile_national" placeholder="91 23 45 67" style="flex:1">
+          </div>
+        </div>
+
         <!-- Ekstra e-postadresser -->
         <div class="lh-form-row">
           <label>Flere e-postadresser</label>

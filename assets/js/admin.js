@@ -145,20 +145,42 @@
       $modal.find('[name=email]').val(e.epostadresse);
     }
 
-    // Telefon fra Brreg — preferer telefon, fall tilbake til mobil.
-    // Brreg lagrer norske numre uten landskode (f.eks. "21 05 24 00").
-    // Strip whitespace + non-digits, prepend +47 hvis ingen prefix.
-    const phoneRaw = e.telefon || e.mobil || '';
-    if (phoneRaw) {
-      let s = String(phoneRaw).trim();
+    // Telefon + mobil fra Brreg — separate felt. Brreg lagrer norske numre
+    // uten landskode (f.eks. "21 05 24 00"). Strip non-digit, prepend +47
+    // hvis ingen prefiks, så split til cc + national.
+    function brregParsePhone(raw) {
+      if (!raw) return null;
+      let s = String(raw).trim();
       if (!s.startsWith('+')) {
         s = '+47' + s.replace(/\D/g, '');
       } else {
         s = s.replace(/\s+/g, '');
       }
-      const split = splitPhone(s);
-      $modal.find('[name=phone_cc]').val(split.cc);
-      $modal.find('[name=phone_national]').val(split.national);
+      return splitPhone(s);
+    }
+    if (e.telefon) {
+      const sp = brregParsePhone(e.telefon);
+      if (sp) {
+        $modal.find('[name=phone_cc]').val(sp.cc);
+        $modal.find('[name=phone_national]').val(sp.national);
+      }
+    }
+    if (e.mobil) {
+      const sm = brregParsePhone(e.mobil);
+      if (sm) {
+        $modal.find('[name=mobile_cc]').val(sm.cc);
+        $modal.find('[name=mobile_national]').val(sm.national);
+      }
+    }
+
+    // Hjemmeside fra Brreg → custom_url. Brreg returnerer ofte uten schema
+    // (f.eks. "www.primafon.no"). Prepend https:// her så bruker ser hva
+    // som blir lagret. Auto-expand "Lenker"-seksjonen så feltet er synlig.
+    if (e.hjemmeside) {
+      let url = String(e.hjemmeside).trim();
+      if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+      $modal.find('[name=custom_url]').val(url);
+      $modal.find('details.lh-form-details').attr('open', 'open');
     }
 
     $modal.find('[name=brreg_data]').val(JSON.stringify(e));
@@ -200,10 +222,13 @@
   /* ── Fyll inn skjema fra et record (delt mellom Rediger-knapp og view-modal) */
   function lhFillForm($modal, data) {
     $modal.find('form')[0]?.reset();
-    const phoneSplit = splitPhone(data.phone || '');
-    const augmented  = Object.assign({}, data, {
-      phone_cc:       phoneSplit.cc,
-      phone_national: phoneSplit.national,
+    const phoneSplit  = splitPhone(data.phone  || '');
+    const mobileSplit = splitPhone(data.mobile || '');
+    const augmented   = Object.assign({}, data, {
+      phone_cc:        phoneSplit.cc,
+      phone_national:  phoneSplit.national,
+      mobile_cc:       mobileSplit.cc,
+      mobile_national: mobileSplit.national,
     });
     Object.entries(augmented).forEach(([k, v]) => {
       const $el = $modal.find(`[name="${k}"]`);
@@ -324,7 +349,8 @@
       fields += viewField(allEmails.length > 1 ? 'E-post' : 'E-post', emailList);
     }
 
-    if (d.phone) fields += viewField('Telefon',  `<a href="tel:${escHtml(phoneTelHref(d.phone))}">${escHtml(formatPhone(d.phone))}</a>`);
+    if (d.phone)  fields += viewField('Telefon', `<a href="tel:${escHtml(phoneTelHref(d.phone))}">${escHtml(formatPhone(d.phone))}</a>`);
+    if (d.mobile) fields += viewField('Mobil',   `<a href="tel:${escHtml(phoneTelHref(d.mobile))}">${escHtml(formatPhone(d.mobile))}</a>`);
 
     // Adresser — begge typer kan ha begge felter; label varierer per type
     const visitLabel = isCompany ? 'Besøksadresse' : 'Hjemmeadresse';

@@ -274,18 +274,21 @@ class Edifice_CRM {
             ? (is_string($data['brreg_data']) ? $data['brreg_data'] : wp_json_encode($data['brreg_data']))
             : null;
 
-        // Telefon: kombiner phone_cc + phone_national hvis sendt fra ny form,
-        // ellers fall tilbake til 'phone'-feltet (bakoverkompatibilitet).
-        // Lagring i pure E.164 format uten mellomrom: "+4791234567".
-        $phone = '';
-        if (!empty($data['phone_national']) || !empty($data['phone_cc'])) {
-            $cc       = sanitize_text_field($data['phone_cc'] ?? '+47');
-            $national = preg_replace('/\s+/', '', sanitize_text_field($data['phone_national'] ?? ''));
-            $phone    = $national !== '' ? $cc . $national : '';
-        } elseif (isset($data['phone'])) {
-            // Strip alle mellomrom i bakoverkompatibel inngang også
-            $phone = preg_replace('/\s+/', '', sanitize_text_field($data['phone']));
-        }
+        // Telefon-felter: kombiner cc + national. Pure E.164 lagring uten mellomrom.
+        // Brukes for både phone (fasttelefon/hovednummer) og mobile (mobil).
+        $combine_phone = function (array $d, string $prefix): string {
+            if (!empty($d[$prefix . '_national']) || !empty($d[$prefix . '_cc'])) {
+                $cc = sanitize_text_field($d[$prefix . '_cc'] ?? '+47');
+                $nat = preg_replace('/\s+/', '', sanitize_text_field($d[$prefix . '_national'] ?? ''));
+                return $nat !== '' ? $cc . $nat : '';
+            }
+            if (isset($d[$prefix])) {
+                return preg_replace('/\s+/', '', sanitize_text_field($d[$prefix]));
+            }
+            return '';
+        };
+        $phone  = $combine_phone($data, 'phone');
+        $mobile = $combine_phone($data, 'mobile');
 
         // Selskaper: parse JSON-array fra form (companies). Først valg blir primær.
         // Format: [{company_id: 12, role: 'Styreleder'}, ...]
@@ -319,6 +322,7 @@ class Edifice_CRM {
             'org_nr'         => sanitize_text_field($data['org_nr']  ?? ''),
             'email'          => sanitize_email($data['email']        ?? ''),
             'phone'          => $phone,
+            'mobile'         => $mobile,
             'address'        => sanitize_textarea_field($data['address']        ?? ''),
             'postal_address' => sanitize_textarea_field($data['postal_address'] ?? ''),
             'category'       => $category,
