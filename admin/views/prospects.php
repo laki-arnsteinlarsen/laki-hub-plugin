@@ -13,7 +13,12 @@ $counts    = Edifice_Prospects::counts();
         B2B-tjenester og tech
       </div>
     </div>
-    <button class="lh-btn lh-btn-primary" id="prospects-import-btn">🔄 Importer nye fra Brreg</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="lh-btn lh-btn-secondary lh-btn-sm" id="prospects-truncate-btn"
+              title="Slett alle prospekter unntatt de som er lagt til i CRM"
+              style="opacity:.65">🗑 Tøm</button>
+      <button class="lh-btn lh-btn-primary" id="prospects-import-btn">🔄 Importer nye fra Brreg</button>
+    </div>
   </div>
 
   <!-- Stats -->
@@ -317,6 +322,26 @@ $counts    = Edifice_Prospects::counts();
   // Action-celler stopper propagation til row-click
   document.querySelectorAll('#prospects-table .actions').forEach(td => {
     td.addEventListener('click', e => e.stopPropagation());
+  });
+
+  // ── Tøm prospekt-data ───────────────────────────────────────────────────
+  document.getElementById('prospects-truncate-btn')?.addEventListener('click', function () {
+    const msg = 'Slett ALLE prospekter unntatt de som er lagt til i CRM?\n\n' +
+                'Bruk dette ved scoring-modell-justering for å kjøre frisk import.\n' +
+                'Konverterte CRM-kontakter beholdes.';
+    if (!confirm(msg)) return;
+    if (!confirm('Helt sikker? Slett-handlingen kan ikke angres.')) return;
+    $.post(Edifice.ajax_url, {
+      action: 'edifice_prospect_truncate',
+      nonce:  Edifice.nonce,
+    }, function (r) {
+      if (r.success) {
+        alert(`Slettet ${r.data.deleted} prospekter. Last siden på nytt.`);
+        location.reload();
+      } else {
+        alert('Feilet: ' + (r.data || 'ukjent'));
+      }
+    });
   });
 })();
 </script>

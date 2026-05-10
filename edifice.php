@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.4.3'); // prospect: kalibrert modell — 14 NACE, ansatte 2-25, omsetning 3-20 sweet, ung-modent fokus
+define('EDIFICE_VERSION', '1.4.4'); // prospect: tøm-knapp for å rense data ved scoring-justering
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -86,6 +86,7 @@ add_action('wp_ajax_edifice_prospect_import',       ['Edifice_Prospects', 'ajax_
 add_action('wp_ajax_edifice_prospect_add_to_crm',   ['Edifice_Prospects', 'ajax_add_to_crm']);
 add_action('wp_ajax_edifice_prospect_skip',         ['Edifice_Prospects', 'ajax_skip']);
 add_action('wp_ajax_edifice_prospect_rescan',       ['Edifice_Prospects', 'ajax_rescan']);
+add_action('wp_ajax_edifice_prospect_truncate',     ['Edifice_Prospects', 'ajax_truncate']);
 add_action('wp_ajax_edifice_register_promptbase',    ['Edifice_Sync_Products', 'ajax_register_promptbase_product']);
 
 // Serve volcano favicon at /favicon.ico so Chrome updates its favicon cache

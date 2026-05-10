@@ -528,4 +528,25 @@ class Edifice_Prospects {
         self::rescan($id);
         wp_send_json_success(self::get($id));
     }
+
+    /**
+     * Slett alle prospekter UNNTATT de som er konvertert til CRM-kontakter.
+     * Brukes til å rense data ved scoring-modell-justeringer slik at man
+     * kan kjøre frisk import med oppdaterte regler.
+     * Returnerer antall rader slettet.
+     */
+    public static function truncate_unconverted(): int {
+        global $wpdb;
+        $t = $wpdb->prefix . 'edifice_prospects';
+        return (int) $wpdb->query("DELETE FROM `$t` WHERE status <> 'added_to_crm'");
+    }
+
+    public static function ajax_truncate(): void {
+        check_ajax_referer('edifice_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Ikke tillatt');
+        }
+        $deleted = self::truncate_unconverted();
+        wp_send_json_success(['deleted' => $deleted]);
+    }
 }
