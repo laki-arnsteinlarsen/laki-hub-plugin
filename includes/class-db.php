@@ -133,6 +133,43 @@ class Edifice_DB {
             UNIQUE KEY unique_listing_date (listing_id, snapshot_date)
         ) $c;");
 
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_prospects (
+            id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            org_nr            VARCHAR(20)  NOT NULL,
+            name              VARCHAR(255) NOT NULL,
+            nace_code         VARCHAR(10)  DEFAULT NULL,
+            nace_description  VARCHAR(255) DEFAULT NULL,
+            employees         INT UNSIGNED DEFAULT NULL,
+            kommune_nr        VARCHAR(10)  DEFAULT NULL,
+            kommune_navn      VARCHAR(100) DEFAULT NULL,
+            registration_date DATE         DEFAULT NULL,
+            website           VARCHAR(500) DEFAULT NULL,
+            email             VARCHAR(255) DEFAULT NULL,
+            phone             VARCHAR(50)  DEFAULT NULL,
+            address           VARCHAR(500) DEFAULT NULL,
+            postal_address    VARCHAR(500) DEFAULT NULL,
+            has_wordpress     TINYINT(1)   DEFAULT NULL,
+            wp_version        VARCHAR(50)  DEFAULT NULL,
+            server_header     VARCHAR(255) DEFAULT NULL,
+            revenue_latest    DECIMAL(15,2) DEFAULT NULL,
+            revenue_year      INT UNSIGNED  DEFAULT NULL,
+            hosting_score     INT UNSIGNED  NOT NULL DEFAULT 0,
+            advisory_score    INT UNSIGNED  NOT NULL DEFAULT 0,
+            status            VARCHAR(30)  NOT NULL DEFAULT 'new',
+            skip_reason       VARCHAR(255) DEFAULT NULL,
+            crm_contact_id    BIGINT UNSIGNED DEFAULT NULL,
+            brreg_data        LONGTEXT     DEFAULT NULL,
+            last_synced_at    DATETIME     DEFAULT NULL,
+            last_scraped_at   DATETIME     DEFAULT NULL,
+            created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_org_nr (org_nr),
+            INDEX idx_status (status),
+            INDEX idx_hosting_score (hosting_score),
+            INDEX idx_kommune (kommune_nr),
+            INDEX idx_nace (nace_code)
+        ) $c;");
+
         update_option('edifice_db_version', EDIFICE_VERSION);
     }
 
@@ -353,6 +390,49 @@ class Edifice_DB {
                 synced_at     DATETIME     DEFAULT NULL,
                 created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_listing_date (listing_id, snapshot_date)
+            ) $c;");
+        }
+
+        // ── Migration 13: opprett edifice_prospects (prospekt-pipeline) ────────
+        $prospects_table = $wpdb->prefix . 'edifice_prospects';
+        if ($wpdb->get_var("SHOW TABLES LIKE '$prospects_table'") !== $prospects_table) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            $c = $wpdb->get_charset_collate();
+            dbDelta("CREATE TABLE $prospects_table (
+                id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                org_nr            VARCHAR(20)  NOT NULL,
+                name              VARCHAR(255) NOT NULL,
+                nace_code         VARCHAR(10)  DEFAULT NULL,
+                nace_description  VARCHAR(255) DEFAULT NULL,
+                employees         INT UNSIGNED DEFAULT NULL,
+                kommune_nr        VARCHAR(10)  DEFAULT NULL,
+                kommune_navn      VARCHAR(100) DEFAULT NULL,
+                registration_date DATE         DEFAULT NULL,
+                website           VARCHAR(500) DEFAULT NULL,
+                email             VARCHAR(255) DEFAULT NULL,
+                phone             VARCHAR(50)  DEFAULT NULL,
+                address           VARCHAR(500) DEFAULT NULL,
+                postal_address    VARCHAR(500) DEFAULT NULL,
+                has_wordpress     TINYINT(1)   DEFAULT NULL,
+                wp_version        VARCHAR(50)  DEFAULT NULL,
+                server_header     VARCHAR(255) DEFAULT NULL,
+                revenue_latest    DECIMAL(15,2) DEFAULT NULL,
+                revenue_year      INT UNSIGNED  DEFAULT NULL,
+                hosting_score     INT UNSIGNED  NOT NULL DEFAULT 0,
+                advisory_score    INT UNSIGNED  NOT NULL DEFAULT 0,
+                status            VARCHAR(30)  NOT NULL DEFAULT 'new',
+                skip_reason       VARCHAR(255) DEFAULT NULL,
+                crm_contact_id    BIGINT UNSIGNED DEFAULT NULL,
+                brreg_data        LONGTEXT     DEFAULT NULL,
+                last_synced_at    DATETIME     DEFAULT NULL,
+                last_scraped_at   DATETIME     DEFAULT NULL,
+                created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_org_nr (org_nr),
+                INDEX idx_status (status),
+                INDEX idx_hosting_score (hosting_score),
+                INDEX idx_kommune (kommune_nr),
+                INDEX idx_nace (nace_code)
             ) $c;");
         }
     }

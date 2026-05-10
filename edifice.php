@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.3.4'); // mobile-felt + brreg autofyll mobil + hjemmeside
+define('EDIFICE_VERSION', '1.4.0'); // Prospekter-modul: advisory + styreoppdrag fra Brreg
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -22,6 +22,7 @@ require_once EDIFICE_DIR . 'includes/class-time.php';
 require_once EDIFICE_DIR . 'includes/class-revenue.php';
 require_once EDIFICE_DIR . 'includes/class-products-digital.php';
 require_once EDIFICE_DIR . 'includes/class-sync-products.php';
+require_once EDIFICE_DIR . 'includes/class-prospects.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
 
@@ -78,6 +79,12 @@ add_action('wp_ajax_edifice_sync_get_listings',      ['Edifice_Sync_Products', '
 // AJAX handlers — Gumroad OAuth
 add_action('wp_ajax_edifice_sync_get_oauth_url',   ['Edifice_Sync_Products', 'ajax_get_oauth_url']);
 add_action('wp_ajax_edifice_sync_disconnect',       ['Edifice_Sync_Products', 'ajax_disconnect_gumroad']);
+
+// AJAX handlers — prospekter
+add_action('wp_ajax_edifice_prospect_import',       ['Edifice_Prospects', 'ajax_import']);
+add_action('wp_ajax_edifice_prospect_add_to_crm',   ['Edifice_Prospects', 'ajax_add_to_crm']);
+add_action('wp_ajax_edifice_prospect_skip',         ['Edifice_Prospects', 'ajax_skip']);
+add_action('wp_ajax_edifice_prospect_rescan',       ['Edifice_Prospects', 'ajax_rescan']);
 add_action('wp_ajax_edifice_register_promptbase',    ['Edifice_Sync_Products', 'ajax_register_promptbase_product']);
 
 // Serve volcano favicon at /favicon.ico so Chrome updates its favicon cache
