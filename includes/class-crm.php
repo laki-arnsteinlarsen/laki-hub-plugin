@@ -57,9 +57,10 @@ class Edifice_CRM {
     }
 
     /**
-     * Splitt et lagret telefonnummer (E.164-ish "+47 91 23 45 67") til
+     * Splitt et lagret telefonnummer (E.164 "+4791234567") til
      * landskode + nasjonalt nummer. Brukes for å pre-utfylle skjemaet.
      * Lengste prefiks vinner ved kollisjon. Default: +47.
+     * Tåler både gammelt format ("+47 91 23 45 67") og nytt ("+4791234567").
      */
     public static function split_phone(string $phone): array {
         $phone = trim($phone);
@@ -67,19 +68,39 @@ class Edifice_CRM {
             return ['cc' => '+47', 'national' => ''];
         }
         if ($phone[0] !== '+') {
-            // Faller tilbake — burde ikke skje etter migrasjon
-            return ['cc' => '+47', 'national' => $phone];
+            return ['cc' => '+47', 'national' => preg_replace('/\s+/', '', $phone)];
         }
         // Sortér ccs etter lengde DESC for å matche +358 før +35
         $codes = array_unique(array_column(self::country_codes(), 'cc'));
         usort($codes, fn($a, $b) => strlen($b) - strlen($a));
         foreach ($codes as $cc) {
             if (str_starts_with($phone, $cc)) {
-                $national = trim(substr($phone, strlen($cc)));
+                $national = preg_replace('/\s+/', '', substr($phone, strlen($cc)));
                 return ['cc' => $cc, 'national' => $national];
             }
         }
-        return ['cc' => '+47', 'national' => substr($phone, 1)]; // ukjent prefiks, drop +
+        return ['cc' => '+47', 'national' => preg_replace('/\s+/', '', substr($phone, 1))];
+    }
+
+    /**
+     * Formater et lagret telefonnummer for visning.
+     * Norske nummer (+47, 8 siffer): "+47 91 23 45 67"
+     * Andre: "+CC nasjonalt-nummer" uten ekstra formatering.
+     */
+    public static function format_phone(string $stored): string {
+        if ($stored === '') return '';
+        $split    = self::split_phone($stored);
+        $cc       = $split['cc'];
+        $national = $split['national'];
+
+        if ($cc === '+47' && strlen($national) === 8 && ctype_digit($national)) {
+            $pretty = $national[0] . $national[1] . ' '
+                    . $national[2] . $national[3] . ' '
+                    . $national[4] . $national[5] . ' '
+                    . $national[6] . $national[7];
+            return $cc . ' ' . $pretty;
+        }
+        return $national !== '' ? $cc . ' ' . $national : $cc;
     }
 
     /**
@@ -201,13 +222,15 @@ class Edifice_CRM {
 
         // Telefon: kombiner phone_cc + phone_national hvis sendt fra ny form,
         // ellers fall tilbake til 'phone'-feltet (bakoverkompatibilitet).
+        // Lagring i pure E.164 format uten mellomrom: "+4791234567".
         $phone = '';
         if (!empty($data['phone_national']) || !empty($data['phone_cc'])) {
             $cc       = sanitize_text_field($data['phone_cc'] ?? '+47');
-            $national = trim(sanitize_text_field($data['phone_national'] ?? ''));
-            $phone    = $national !== '' ? $cc . ' ' . $national : '';
+            $national = preg_replace('/\s+/', '', sanitize_text_field($data['phone_national'] ?? ''));
+            $phone    = $national !== '' ? $cc . $national : '';
         } elseif (isset($data['phone'])) {
-            $phone = sanitize_text_field($data['phone']);
+            // Strip alle mellomrom i bakoverkompatibel inngang også
+            $phone = preg_replace('/\s+/', '', sanitize_text_field($data['phone']));
         }
 
         $fields = [

@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.2.0'); // CRM: country code phone + clickable rows + drill-down + social URLs
+define('EDIFICE_VERSION', '1.2.1'); // phone: pure E.164 storage + Norwegian ## ## ## ## display
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

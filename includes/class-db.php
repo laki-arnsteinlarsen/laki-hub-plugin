@@ -213,6 +213,20 @@ class Edifice_DB {
                 );
                 update_option('edifice_phone_normalized', true);
             }
+
+            // ── Migration 8: compact phone storage — strip all whitespace ──────
+            // Resultat: "+47 91 23 45 67" → "+4791234567" (pure E.164).
+            // Visning skjer via Edifice_CRM::format_phone().
+            if (! get_option('edifice_phone_compact', false)) {
+                $rows = $wpdb->get_results("SELECT id, phone FROM `$contact_table` WHERE phone IS NOT NULL AND phone <> ''");
+                foreach ($rows as $r) {
+                    $clean = preg_replace('/\s+/', '', $r->phone);
+                    if ($clean !== $r->phone) {
+                        $wpdb->update($contact_table, ['phone' => $clean], ['id' => $r->id]);
+                    }
+                }
+                update_option('edifice_phone_compact', true);
+            }
         }
 
         // ── Migration 4: Create product tables if missing (Produkter module) ────

@@ -68,7 +68,7 @@ $n_persons   = count($contacts) - $n_companies;
               <?php endif; ?>
             </td>
             <td><?= esc_html($c['email']) ?: '—' ?></td>
-            <td><?= esc_html($c['phone']) ?: '—' ?></td>
+            <td><?= esc_html(Edifice_CRM::format_phone($c['phone'] ?? '')) ?: '—' ?></td>
             <td><?= $cat_arr ? esc_html(implode(', ', $cat_arr)) : '—' ?></td>
             <td><span class="lh-badge lh-badge-<?= $scolor ?>"><?= $slabel ?></span></td>
             <td class="actions">

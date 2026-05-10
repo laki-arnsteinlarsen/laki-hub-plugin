@@ -125,20 +125,36 @@
     $(this).closest('.lh-brreg-results').hide();
   });
 
-  /* ── Phone splitter (E.164-ish "+47 91 23 45 67" → cc + national) ───────── */
+  /* ── Phone helpers (E.164 "+4791234567" ↔ cc + national) ────────────────── */
   // Lengste prefiks vinner. Liste matcher Edifice_CRM::country_codes() i PHP.
   const KNOWN_CCS = ['+372','+370','+371','+358','+354','+353','+351','+420',
                      '+47','+46','+45','+44','+43','+41','+39','+34','+33','+32',
                      '+31','+30','+1','+49','+48','+52','+55','+61','+81','+86','+91'];
   function splitPhone(stored) {
-    const v = String(stored || '').trim();
-    if (!v) return { cc: '+47', national: '' };
-    if (v[0] !== '+') return { cc: '+47', national: v };
+    const raw = String(stored || '').trim();
+    if (!raw) return { cc: '+47', national: '' };
+    const stripped = raw.replace(/\s+/g, '');
+    if (stripped[0] !== '+') return { cc: '+47', national: stripped };
     const sorted = KNOWN_CCS.slice().sort((a, b) => b.length - a.length);
     for (const cc of sorted) {
-      if (v.startsWith(cc)) return { cc, national: v.slice(cc.length).trim() };
+      if (stripped.startsWith(cc)) return { cc, national: stripped.slice(cc.length) };
     }
-    return { cc: '+47', national: v.slice(1) };
+    return { cc: '+47', national: stripped.slice(1) };
+  }
+  // Visningsformatter: norske 8-sifrede nummer som "+47 91 23 45 67",
+  // andre land som "+CC nasjonalt-nummer" uten ekstra formatering.
+  function formatPhone(stored) {
+    if (!stored) return '';
+    const { cc, national } = splitPhone(stored);
+    if (!national) return cc;
+    if (cc === '+47' && /^\d{8}$/.test(national)) {
+      return `${cc} ${national.slice(0,2)} ${national.slice(2,4)} ${national.slice(4,6)} ${national.slice(6,8)}`;
+    }
+    return `${cc} ${national}`;
+  }
+  // Til tel:-href — strip alle mellomrom (E.164)
+  function phoneTelHref(stored) {
+    return String(stored || '').replace(/\s+/g, '');
   }
 
   /* ── Fyll inn skjema fra et record (delt mellom Rediger-knapp og view-modal) */
@@ -239,7 +255,7 @@
     const [sLabel, sCls] = crmStatusBadge[d.status] || ['?', 'lh-badge-gray'];
     fields += viewField('Status', `<span class="lh-badge ${sCls}">${sLabel}</span>`);
     if (d.email) fields += viewField('E-post',   `<a href="mailto:${escHtml(d.email)}">${escHtml(d.email)}</a>`);
-    if (d.phone) fields += viewField('Telefon',  `<a href="tel:${escHtml((d.phone||'').replace(/\s+/g,''))}">${escHtml(d.phone)}</a>`);
+    if (d.phone) fields += viewField('Telefon',  `<a href="tel:${escHtml(phoneTelHref(d.phone))}">${escHtml(formatPhone(d.phone))}</a>`);
     if (d.address)     fields += viewField('Adresse',   escHtml(d.address));
     if (d.created_at)  fields += viewField('Opprettet', fmtDate(d.created_at));
 
@@ -290,7 +306,7 @@
             <span style="font-size:16px">👤</span>
             <span class="name">${escHtml(p.name)}</span>
             ${p.email ? `<span class="meta">${escHtml(p.email)}</span>` : ''}
-            ${p.phone ? `<span class="meta">${escHtml(p.phone)}</span>` : ''}
+            ${p.phone ? `<span class="meta">${escHtml(formatPhone(p.phone))}</span>` : ''}
             <span style="margin-left:auto;color:var(--lh-muted);font-size:13px">→</span>
           </div>`
         ).join('');
