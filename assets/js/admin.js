@@ -140,6 +140,27 @@
       $modal.find('[name=postal_address]').val('');
     }
 
+    // E-post fra Brreg (offisiell registrert kontakt-epost)
+    if (e.epostadresse) {
+      $modal.find('[name=email]').val(e.epostadresse);
+    }
+
+    // Telefon fra Brreg — preferer telefon, fall tilbake til mobil.
+    // Brreg lagrer norske numre uten landskode (f.eks. "21 05 24 00").
+    // Strip whitespace + non-digits, prepend +47 hvis ingen prefix.
+    const phoneRaw = e.telefon || e.mobil || '';
+    if (phoneRaw) {
+      let s = String(phoneRaw).trim();
+      if (!s.startsWith('+')) {
+        s = '+47' + s.replace(/\D/g, '');
+      } else {
+        s = s.replace(/\s+/g, '');
+      }
+      const split = splitPhone(s);
+      $modal.find('[name=phone_cc]').val(split.cc);
+      $modal.find('[name=phone_national]').val(split.national);
+    }
+
     $modal.find('[name=brreg_data]').val(JSON.stringify(e));
     $(this).closest('.lh-brreg-results').hide();
   });
