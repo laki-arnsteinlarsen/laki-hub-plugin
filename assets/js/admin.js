@@ -286,13 +286,10 @@
 
     if (d.phone) fields += viewField('Telefon',  `<a href="tel:${escHtml(phoneTelHref(d.phone))}">${escHtml(formatPhone(d.phone))}</a>`);
 
-    // Adresse — selskap viser separat besøk + post
-    if (isCompany) {
-      if (d.address)        fields += viewField('Besøksadresse', escHtml(d.address));
-      if (d.postal_address) fields += viewField('Postadresse',   escHtml(d.postal_address));
-    } else if (d.address) {
-      fields += viewField('Adresse', escHtml(d.address));
-    }
+    // Adresser — begge typer kan ha begge felter; label varierer per type
+    const visitLabel = isCompany ? 'Besøksadresse' : 'Hjemmeadresse';
+    if (d.address)        fields += viewField(visitLabel,    escHtml(d.address));
+    if (d.postal_address) fields += viewField('Postadresse', escHtml(d.postal_address));
 
     if (d.created_at)  fields += viewField('Opprettet', fmtDate(d.created_at));
 

@@ -245,14 +245,15 @@ $n_persons   = count($contacts) - $n_companies;
           </template>
         </div>
 
-        <!-- Adresse: én for person, to for selskap -->
+        <!-- Adresser: begge typer har begge felter, label endrer seg etter type.
+             Begge har Geonorge-autocomplete (Kartverket sin åpne API). -->
         <div class="lh-form-row">
           <label id="crm-address-label">Adresse</label>
-          <input type="text" name="address">
+          <input type="text" name="address" class="lh-addr-autocomplete" autocomplete="off">
         </div>
-        <div class="lh-form-row" id="crm-postal-address-row" style="display:none">
+        <div class="lh-form-row" id="crm-postal-address-row">
           <label>Postadresse</label>
-          <input type="text" name="postal_address">
+          <input type="text" name="postal_address" class="lh-addr-autocomplete" autocomplete="off">
         </div>
 
         <details class="lh-form-details" style="margin:12px 0 4px">
@@ -374,11 +375,9 @@ function crmTypeToggle(val) {
   const isPerson = val === 'person';
   document.getElementById('crm-company-row').style.display = isPerson ? '' : 'none';
   document.getElementById('crm-orgnr-row').style.display   = isPerson ? 'none' : '';
-  // Selskap har både besøksadresse og postadresse
+  // Begge typer har postadresse — bare label-teksten endres
   const addrLabel = document.getElementById('crm-address-label');
-  const postalRow = document.getElementById('crm-postal-address-row');
-  if (addrLabel) addrLabel.textContent = isPerson ? 'Adresse' : 'Besøksadresse';
-  if (postalRow) postalRow.style.display = isPerson ? 'none' : '';
+  if (addrLabel) addrLabel.textContent = isPerson ? 'Hjemmeadresse' : 'Besøksadresse';
 }
 document.getElementById('crm-type-select')?.addEventListener('change', function () {
   crmTypeToggle(this.value);
@@ -429,6 +428,114 @@ document.getElementById('crm-add-company-btn')?.addEventListener('click', () => 
 window.crmAddEmailRow   = crmAddEmailRow;
 window.crmAddCompanyRow = crmAddCompanyRow;
 window.crmTypeToggle    = crmTypeToggle;
+
+/* ── Geonorge adresse-autocomplete (Kartverket åpen API) ─────────────────── */
+function bindGeonorgeAutocomplete(input) {
+  if (input.dataset.geonorgeBound) return;
+  input.dataset.geonorgeBound = '1';
+
+  // Pakk input i relativ container slik at dropdown kan posisjoneres absolutt
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:relative';
+  input.parentNode.insertBefore(wrapper, input);
+  wrapper.appendChild(input);
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'lh-geonorge-results';
+  dropdown.style.cssText = 'display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;'
+    + 'background:#fff;border:1px solid #e2e8f0;border-radius:8px;'
+    + 'max-height:280px;overflow-y:auto;z-index:9999;'
+    + 'box-shadow:0 8px 24px rgba(15,23,42,.08)';
+  wrapper.appendChild(dropdown);
+
+  let timer;
+  let activeIdx = -1;
+  const escapeHtml = s => String(s).replace(/[&<>"]/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+
+  function renderDropdown(items) {
+    if (!items || !items.length) {
+      dropdown.style.display = 'none';
+      activeIdx = -1;
+      return;
+    }
+    dropdown.innerHTML = items.map((a, i) => {
+      const text = `${a.adressetekst}, ${a.postnummer} ${a.poststed}`;
+      return `<div class="lh-geonorge-item" data-idx="${i}" data-text="${escapeHtml(text)}"
+        style="padding:10px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:13px">
+        <div style="font-weight:500">${escapeHtml(text)}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px">${escapeHtml(a.kommunenavn || '')}</div>
+      </div>`;
+    }).join('');
+    dropdown.style.display = 'block';
+    activeIdx = -1;
+  }
+
+  function fetchAddresses(q) {
+    const url = 'https://ws.geonorge.no/adresser/v1/sok?treffPerSide=8&utkoordsys=4258&sok='
+              + encodeURIComponent(q);
+    return fetch(url).then(r => r.json())
+      .then(data => data.adresser || [])
+      .catch(() => []);
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    const q = this.value.trim();
+    if (q.length < 3) { dropdown.style.display = 'none'; return; }
+    timer = setTimeout(() => fetchAddresses(q).then(renderDropdown), 250);
+  });
+
+  // Klikk på element velger adresse
+  dropdown.addEventListener('mousedown', function (e) {
+    const item = e.target.closest('.lh-geonorge-item');
+    if (!item) return;
+    e.preventDefault(); // hindrer blur før vi får oppdatert verdi
+    input.value = item.dataset.text;
+    dropdown.style.display = 'none';
+    input.focus();
+  });
+
+  // Tastatur-navigasjon (↑ ↓ Enter Esc)
+  input.addEventListener('keydown', function (e) {
+    const items = dropdown.querySelectorAll('.lh-geonorge-item');
+    if (!items.length || dropdown.style.display === 'none') return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx + 1, items.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx - 1, 0);
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault();
+      input.value = items[activeIdx].dataset.text;
+      dropdown.style.display = 'none';
+      return;
+    } else if (e.key === 'Escape') {
+      dropdown.style.display = 'none';
+      activeIdx = -1;
+      return;
+    } else {
+      return;
+    }
+    items.forEach((el, i) => {
+      el.style.background = i === activeIdx ? '#f1f5f9' : '';
+    });
+    items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+  });
+
+  // Lukk dropdown når input mister fokus (delay for å rekke klikk)
+  input.addEventListener('blur', () => setTimeout(() => {
+    dropdown.style.display = 'none';
+  }, 150));
+}
+
+// Bind ved load + ved type-toggle (i tilfelle felt rendres senere)
+function bindAllGeonorge() {
+  document.querySelectorAll('.lh-addr-autocomplete').forEach(bindGeonorgeAutocomplete);
+}
+bindAllGeonorge();
+document.getElementById('modal-crm')?.addEventListener('lh:opened', bindAllGeonorge);
 
 /* ── Serialiser dynamiske rader til JSON før form-submit ─────────────────── */
 document.querySelector('#modal-crm form')?.addEventListener('submit', function () {
