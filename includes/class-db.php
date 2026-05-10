@@ -71,4 +71,29 @@ class LakiHub_DB {
 
         update_option('laki_hub_db_version', LAKI_HUB_VERSION);
     }
+
+    /**
+     * Run lightweight ALTER TABLE migrations for upgrades that don't involve
+     * creating new tables (dbDelta handles new tables; ALTER is needed for
+     * adding columns to existing tables).
+     *
+     * Safe to call on every plugins_loaded — each check is a cheap SHOW COLUMNS.
+     */
+    public static function maybe_migrate(): void {
+        global $wpdb;
+        $t = $wpdb->prefix . 'laki_contacts';
+
+        // v1.1 — add company_id so persons can be linked to a company contact.
+        $cols = array_column(
+            $wpdb->get_results("SHOW COLUMNS FROM `$t`", ARRAY_A) ?: [],
+            'Field'
+        );
+        if (!in_array('company_id', $cols, true)) {
+            $wpdb->query(
+                "ALTER TABLE `$t`
+                 ADD COLUMN `company_id` BIGINT UNSIGNED DEFAULT NULL AFTER `type`,
+                 ADD INDEX  `idx_company_id` (`company_id`)"
+            );
+        }
+    }
 }

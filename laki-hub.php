@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Laki Hub
  * Description: Internt dashbord for Laki AS — CRM, timeføring, prosjekter, inntekt og nyheter.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Laki AS
  * Text Domain: laki-hub
  */
 
 defined('ABSPATH') || exit;
 
-define('LAKI_HUB_VERSION', '1.0.0');
+define('LAKI_HUB_VERSION', '1.1.0');
 define('LAKI_HUB_DIR', plugin_dir_path(__FILE__));
 define('LAKI_HUB_URL', plugin_dir_url(__FILE__));
 
@@ -19,23 +19,37 @@ require_once LAKI_HUB_DIR . 'includes/class-crm.php';
 require_once LAKI_HUB_DIR . 'includes/class-projects.php';
 require_once LAKI_HUB_DIR . 'includes/class-time.php';
 require_once LAKI_HUB_DIR . 'includes/class-revenue.php';
+require_once LAKI_HUB_DIR . 'includes/class-gmail.php';
 require_once LAKI_HUB_DIR . 'admin/admin.php';
 require_once LAKI_HUB_DIR . 'frontend/class-frontend.php';
 
 register_activation_hook(__FILE__, ['LakiHub_DB', 'install']);
 
 add_action('plugins_loaded', function () {
+    LakiHub_DB::maybe_migrate();   // lightweight ALTER TABLE migrations (v1.1+)
     LakiHub_Admin::init();
     LakiHub_Frontend::init();
 });
 
-// AJAX handlers
-add_action('wp_ajax_laki_brreg_lookup',    ['LakiHub_Brreg', 'ajax_lookup']);
-add_action('wp_ajax_laki_crm_save',        ['LakiHub_CRM',   'ajax_save']);
-add_action('wp_ajax_laki_crm_delete',      ['LakiHub_CRM',   'ajax_delete']);
-add_action('wp_ajax_laki_time_save',       ['LakiHub_Time',  'ajax_save']);
-add_action('wp_ajax_laki_time_delete',     ['LakiHub_Time',  'ajax_delete']);
-add_action('wp_ajax_laki_project_save',    ['LakiHub_Projects', 'ajax_save']);
-add_action('wp_ajax_laki_project_delete',  ['LakiHub_Projects', 'ajax_delete']);
-add_action('wp_ajax_laki_revenue_save',    ['LakiHub_Revenue', 'ajax_save']);
-add_action('wp_ajax_laki_revenue_delete',  ['LakiHub_Revenue', 'ajax_delete']);
+// ── AJAX handlers ──────────────────────────────────────────────────────────
+add_action('wp_ajax_laki_brreg_lookup',      ['LakiHub_Brreg',    'ajax_lookup']);
+
+add_action('wp_ajax_laki_crm_save',          ['LakiHub_CRM',      'ajax_save']);
+add_action('wp_ajax_laki_crm_delete',        ['LakiHub_CRM',      'ajax_delete']);
+add_action('wp_ajax_laki_crm_get_persons',   ['LakiHub_CRM',      'ajax_get_persons']);
+
+add_action('wp_ajax_laki_gmail_get_emails',  ['LakiHub_Gmail',    'ajax_get_emails']);
+
+add_action('wp_ajax_laki_time_save',         ['LakiHub_Time',     'ajax_save']);
+add_action('wp_ajax_laki_time_delete',       ['LakiHub_Time',     'ajax_delete']);
+add_action('wp_ajax_laki_time_start',        ['LakiHub_Time',     'ajax_start_timer']);
+add_action('wp_ajax_laki_time_stop',         ['LakiHub_Time',     'ajax_stop_timer']);
+add_action('wp_ajax_laki_time_active',       ['LakiHub_Time',     'ajax_active_timer']);
+add_action('wp_ajax_laki_time_period_data',  ['LakiHub_Time',     'ajax_period_data']);
+add_action('wp_ajax_laki_time_export',       ['LakiHub_Time',     'ajax_export']);
+
+add_action('wp_ajax_laki_project_save',      ['LakiHub_Projects', 'ajax_save']);
+add_action('wp_ajax_laki_project_delete',    ['LakiHub_Projects', 'ajax_delete']);
+
+add_action('wp_ajax_laki_revenue_save',      ['LakiHub_Revenue',  'ajax_save']);
+add_action('wp_ajax_laki_revenue_delete',    ['LakiHub_Revenue',  'ajax_delete']);

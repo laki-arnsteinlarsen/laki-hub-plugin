@@ -333,3 +333,168 @@
 .amount { font-variant-numeric: tabular-nums; font-weight: 600; }
 .amount-pos { color: var(--lh-green); }
 .amount-neg { color: var(--lh-red); }
+
+/* ─── Timer widget ─────────────────────────────────────────────────────────── */
+.lh-timer-card { padding: 16px 20px; }
+.lh-timer-label { font-size: 12px; font-weight: 600; color: var(--lh-muted); text-transform: uppercase; letter-spacing: .5px; margin: 0 0 10px; }
+.lh-timer-start-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lh-input { padding: 8px 12px; border: 1px solid var(--lh-border); border-radius: 7px; font-size: 14px; color: var(--lh-text); background: var(--lh-bg); outline: none; }
+.lh-input:focus { border-color: var(--lh-accent); background: #fff; }
+.lh-input-grow { flex: 1; min-width: 180px; }
+.lh-timer-running-row { display: flex; align-items: center; gap: 14px; }
+.lh-timer-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lh-green); box-shadow: 0 0 0 3px rgba(22,163,74,.2); animation: lh-pulse 1.5s infinite; flex-shrink: 0; }
+@keyframes lh-pulse { 0%,100%{box-shadow:0 0 0 3px rgba(22,163,74,.2)} 50%{box-shadow:0 0 0 6px rgba(22,163,74,.08)} }
+.lh-timer-running-label { flex: 1; font-weight: 500; color: var(--lh-text); }
+.lh-timer-clock { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--lh-accent); letter-spacing: -1px; }
+
+/* ─── Period bar ────────────────────────────────────────────────────────────── */
+.lh-period-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.lh-period-tabs { display: flex; gap: 4px; background: var(--lh-surface); border: 1px solid var(--lh-border); border-radius: 9px; padding: 3px; }
+.lh-period-tab { padding: 6px 14px; border: none; background: transparent; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--lh-muted); cursor: pointer; transition: background .12s, color .12s; }
+.lh-period-tab:hover { color: var(--lh-text); }
+.lh-period-tab.active { background: var(--lh-accent); color: #fff; }
+
+
+/* ─── v1.1 additions ───────────────────────────────────────────────────────── */
+
+/* Filter tabs (CRM) */
+.lh-filter-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--lh-bg);
+  border: 1px solid var(--lh-border);
+  border-radius: 8px;
+  padding: 2px;
+}
+.lh-ftab {
+  padding: 5px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lh-muted);
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.lh-ftab:hover { color: var(--lh-text); }
+.lh-ftab.active { background: var(--lh-surface); color: var(--lh-text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+/* Person sub-label under name */
+.lh-person-company {
+  font-size: 11px;
+  color: var(--lh-accent);
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+/* Wide modal variant (view modals) */
+.lh-modal-wide {
+  width: 680px;
+  max-width: 96vw;
+}
+
+/* View modal — field grid */
+.lh-view-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+@media (max-width: 600px) { .lh-view-grid { grid-template-columns: 1fr; } }
+
+/* Individual view field */
+.lh-view-field {}
+.lh-view-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--lh-muted);
+  margin-bottom: 3px;
+}
+.lh-view-value {
+  font-size: 14px;
+  color: var(--lh-text);
+  word-break: break-word;
+}
+.lh-view-value a { color: var(--lh-accent); text-decoration: none; }
+.lh-view-value a:hover { text-decoration: underline; }
+
+/* Section title inside view modal */
+.lh-view-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--lh-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--lh-border);
+  margin-bottom: 10px;
+}
+
+/* Notes area in view modal */
+.lh-view-notes {
+  font-size: 13px;
+  color: var(--lh-text);
+  white-space: pre-wrap;
+  background: #f8fafc;
+  border: 1px solid var(--lh-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  line-height: 1.6;
+}
+
+/* Persons list in company view modal */
+.lh-person-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+}
+.lh-person-row:last-child { border-bottom: none; }
+.lh-person-row .name { font-weight: 600; flex: 1; }
+.lh-person-row .meta { color: var(--lh-muted); font-size: 12px; }
+
+/* Gmail email list */
+.lh-gmail-email {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--lh-border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--lh-surface);
+  font-size: 13px;
+  transition: background .1s;
+}
+.lh-gmail-email:hover { background: #f8fafc; }
+.lh-gmail-dir {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.lh-gmail-dir.sent     { background: #ebf0ff; }
+.lh-gmail-dir.received { background: #f0fdf4; }
+.lh-gmail-subject { font-weight: 600; color: var(--lh-text); }
+.lh-gmail-meta    { font-size: 11px; color: var(--lh-muted); margin-top: 2px; }
+.lh-gmail-empty   { text-align:center; padding:20px; color:var(--lh-muted); font-size:13px; }
+.lh-gmail-connect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+}
