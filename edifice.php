@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.4.1'); // fix: prospect website URL normalisering
+define('EDIFICE_VERSION', '1.4.2'); // prospect: ansatte-fallback fra underenheter + nøytral score for ukjent
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

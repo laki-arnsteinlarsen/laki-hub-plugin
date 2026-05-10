@@ -32,6 +32,7 @@ class Edifice_Prospects {
     const KOMMUNE_PREFIXES = ['03', '31', '32', '33', '34'];
 
     const BRREG_BASE      = 'https://data.brreg.no/enhetsregisteret/api/enheter';
+    const UNDERENHET_BASE = 'https://data.brreg.no/enhetsregisteret/api/underenheter';
     const REGNSKAP_BASE   = 'https://data.brreg.no/regnskapsregisteret/regnskap/';
     const IMPORT_BATCH_SZ = 50; // antall enheter per import-runde
 
@@ -186,6 +187,34 @@ class Edifice_Prospects {
         return esc_url_raw($raw);
     }
 
+    /**
+     * Hent ansatte fra underenheter-API som fallback når hovedenheten
+     * ikke har antallAnsatte. Brreg sin ansatte-data kommer fra NAVs
+     * arbeidsgiverregister og rapporteres ofte per virksomhet/avdeling.
+     * Returnerer null hvis fortsatt ikke funnet.
+     */
+    public static function fetch_employees_fallback(string $org_nr): ?int {
+        $url  = self::UNDERENHET_BASE . '?' . http_build_query([
+            'overordnetEnhet' => $org_nr,
+            'size' => 50,
+        ]);
+        $resp = wp_remote_get($url, ['timeout' => 8]);
+        if (is_wp_error($resp)) return null;
+        $body = json_decode(wp_remote_retrieve_body($resp), true);
+        $units = $body['_embedded']['underenheter'] ?? [];
+        if (empty($units)) return null;
+
+        $sum = 0;
+        $found_any = false;
+        foreach ($units as $u) {
+            if (isset($u['antallAnsatte']) && is_numeric($u['antallAnsatte'])) {
+                $sum += (int) $u['antallAnsatte'];
+                $found_any = true;
+            }
+        }
+        return $found_any ? $sum : null;
+    }
+
     private static function insert_from_brreg(array $e): int {
         global $wpdb;
         $t = $wpdb->prefix . 'edifice_prospects';
@@ -203,12 +232,17 @@ class Edifice_Prospects {
         $nace_obj = $e['naeringskode1'] ?? null;
         $reg_dato = $e['registreringsdatoEnhetsregisteret'] ?? null;
 
+        // Ansatte: bruk hovedenheten først, fall tilbake til underenheter
+        $employees = isset($e['antallAnsatte']) && is_numeric($e['antallAnsatte'])
+            ? (int) $e['antallAnsatte']
+            : self::fetch_employees_fallback($e['organisasjonsnummer']);
+
         $wpdb->insert($t, [
             'org_nr'            => $e['organisasjonsnummer'],
             'name'              => $e['navn'] ?? '',
             'nace_code'         => $nace_obj['kode'] ?? null,
             'nace_description'  => $nace_obj['beskrivelse'] ?? null,
-            'employees'         => isset($e['antallAnsatte']) ? (int) $e['antallAnsatte'] : null,
+            'employees'         => $employees,
             'kommune_nr'        => $forr['kommunenummer'] ?? null,
             'kommune_navn'      => $forr['kommune'] ?? null,
             'registration_date' => $reg_dato ?: null,
@@ -337,12 +371,17 @@ class Edifice_Prospects {
 
         // ── Advisory-score (primær) ─────────────────────────────────────────
         $advisory = 0;
-        $emp = (int) $row['employees'];
+        // employees kan være null (Brreg/NAV mangler data) — IKKE samme som 0
+        $emp_known = isset($row['employees']) && $row['employees'] !== null && $row['employees'] !== '';
+        $emp = $emp_known ? (int) $row['employees'] : null;
         $rev = (float) $row['revenue_latest'];
 
         // Ansatte sweet spot 5-50: stor nok til å trenge ekstern hjelp,
-        // liten nok til at en enkelt rådgiver gjør forskjell
-        if ($emp >= 5 && $emp <= 15)            $advisory += 30;  // ideal — minst kapasitet internt
+        // liten nok til at en enkelt rådgiver gjør forskjell.
+        // Ukjent ansatte gir nøytral middels-score for å unngå å straffe
+        // bedrifter med mangelfull NAV-rapportering (eierdrevne AS osv.)
+        if (!$emp_known)                        $advisory += 10;  // nøytral for ukjent
+        elseif ($emp >= 5 && $emp <= 15)        $advisory += 30;  // ideal — minst kapasitet internt
         elseif ($emp >= 16 && $emp <= 30)       $advisory += 25;  // veldig godt
         elseif ($emp >= 31 && $emp <= 50)       $advisory += 15;  // bra
         elseif ($emp >= 51 && $emp <= 100)      $advisory += 5;   // grenseland — har gjerne intern struktur
@@ -427,6 +466,15 @@ class Edifice_Prospects {
     }
 
     public static function rescan(int $id): void {
+        global $wpdb;
+        $t = $wpdb->prefix . 'edifice_prospects';
+        $row = self::get($id);
+        if ($row && empty($row['employees'])) {
+            $emp = self::fetch_employees_fallback($row['org_nr']);
+            if ($emp !== null) {
+                $wpdb->update($t, ['employees' => $emp], ['id' => $id]);
+            }
+        }
         self::detect_wordpress($id);
         self::fetch_revenue($id);
         self::compute_scores($id);

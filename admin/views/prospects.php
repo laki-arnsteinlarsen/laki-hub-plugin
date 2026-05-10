@@ -91,7 +91,9 @@ $counts    = Edifice_Prospects::counts();
                 <div style="font-size:11px;color:var(--lh-muted)"><?= esc_html($p['nace_description']) ?></div>
               <?php endif; ?>
             </td>
-            <td><?= $p['employees'] !== null ? esc_html($p['employees']) : '—' ?></td>
+            <td><?= $p['employees'] !== null
+                  ? esc_html($p['employees'])
+                  : '<span style="color:var(--lh-muted)" title="Ikke registrert i Brreg/NAV">?</span>' ?></td>
             <td>
               <?= esc_html($rev_str) ?>
               <?php if ($rev_year): ?>
@@ -208,7 +210,9 @@ $counts    = Edifice_Prospects::counts();
     let html = '';
     html += fmt('Org.nr', escHtml(d.org_nr));
     html += fmt('Bransje', `${escHtml(d.nace_code || '')} ${escHtml(d.nace_description || '')}`);
-    html += fmt('Ansatte', escHtml(d.employees));
+    html += fmt('Ansatte', d.employees !== null && d.employees !== ''
+      ? escHtml(d.employees)
+      : '<span style="color:var(--lh-muted)">Ikke registrert i Brreg/NAV</span>');
     html += fmt('Kommune', escHtml(d.kommune_navn));
     html += fmt('Etablert', d.registration_date ? escHtml(d.registration_date) : '');
     html += fmt('Omsetning', escHtml(revStr));
