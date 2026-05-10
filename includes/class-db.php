@@ -9,20 +9,26 @@ class Edifice_DB {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
         dbDelta("CREATE TABLE {$wpdb->prefix}edifice_contacts (
-            id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            type        VARCHAR(50)  NOT NULL DEFAULT 'company',
-            company_id  BIGINT UNSIGNED DEFAULT NULL,
-            name        VARCHAR(255) NOT NULL,
-            org_nr      VARCHAR(20)  DEFAULT NULL,
-            email       VARCHAR(255) DEFAULT NULL,
-            phone       VARCHAR(50)  DEFAULT NULL,
-            address     VARCHAR(500) DEFAULT NULL,
-            category    TEXT         DEFAULT NULL,
-            status      ENUM('lead','active','inactive') NOT NULL DEFAULT 'active',
-            brreg_data  LONGTEXT     DEFAULT NULL,
-            notes       LONGTEXT     DEFAULT NULL,
-            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            type          VARCHAR(50)  NOT NULL DEFAULT 'company',
+            company_id    BIGINT UNSIGNED DEFAULT NULL,
+            name          VARCHAR(255) NOT NULL,
+            org_nr        VARCHAR(20)  DEFAULT NULL,
+            email         VARCHAR(255) DEFAULT NULL,
+            phone         VARCHAR(50)  DEFAULT NULL,
+            address       VARCHAR(500) DEFAULT NULL,
+            category      TEXT         DEFAULT NULL,
+            status        ENUM('lead','active','inactive') NOT NULL DEFAULT 'active',
+            linkedin_url  VARCHAR(500) DEFAULT NULL,
+            instagram_url VARCHAR(500) DEFAULT NULL,
+            facebook_url  VARCHAR(500) DEFAULT NULL,
+            x_url         VARCHAR(500) DEFAULT NULL,
+            tiktok_url    VARCHAR(500) DEFAULT NULL,
+            custom_url    VARCHAR(500) DEFAULT NULL,
+            brreg_data    LONGTEXT     DEFAULT NULL,
+            notes         LONGTEXT     DEFAULT NULL,
+            created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) $c;");
 
         dbDelta("CREATE TABLE {$wpdb->prefix}edifice_projects (
@@ -173,6 +179,39 @@ class Edifice_DB {
                      ADD COLUMN `company_id` BIGINT UNSIGNED DEFAULT NULL AFTER `type`,
                      ADD INDEX  `idx_company_id` (`company_id`)"
                 );
+            }
+
+            // ── Migration 6: social URL columns (LinkedIn/Instagram/etc.) ──────
+            $social_cols = [
+                'linkedin_url'  => 'AFTER `status`',
+                'instagram_url' => 'AFTER `linkedin_url`',
+                'facebook_url'  => 'AFTER `instagram_url`',
+                'x_url'         => 'AFTER `facebook_url`',
+                'tiktok_url'    => 'AFTER `x_url`',
+                'custom_url'    => 'AFTER `tiktok_url`',
+            ];
+            foreach ($social_cols as $col => $position) {
+                if (! isset($cols[$col])) {
+                    $wpdb->query("ALTER TABLE `$contact_table` ADD COLUMN `$col` VARCHAR(500) DEFAULT NULL $position");
+                }
+            }
+
+            // ── Migration 7: normalize phone numbers to include country code ───
+            // Idempotent via flag-option. Run only once.
+            if (! get_option('edifice_phone_normalized', false)) {
+                // Step 1: 00-prefix → +-prefix (international format conversion)
+                $wpdb->query(
+                    "UPDATE `$contact_table`
+                     SET phone = CONCAT('+', SUBSTRING(phone, 3))
+                     WHERE phone LIKE '00%' AND phone NOT LIKE '+%'"
+                );
+                // Step 2: prepend +47 to remaining naked numbers (assume Norwegian)
+                $wpdb->query(
+                    "UPDATE `$contact_table`
+                     SET phone = CONCAT('+47 ', phone)
+                     WHERE phone IS NOT NULL AND phone <> '' AND phone NOT LIKE '+%'"
+                );
+                update_option('edifice_phone_normalized', true);
             }
         }
 

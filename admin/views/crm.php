@@ -1,9 +1,10 @@
 <?php
 defined('ABSPATH') || exit;
 
-$contacts  = Edifice_CRM::get_all();
-$companies = Edifice_CRM::get_companies();   // for person-form dropdown
-$gmail_on  = Edifice_Gmail::is_connected();
+$contacts       = Edifice_CRM::get_all();
+$companies      = Edifice_CRM::get_companies();   // for person-form dropdown
+$gmail_on       = Edifice_Gmail::is_connected();
+$country_codes  = Edifice_CRM::country_codes();
 
 $status_labels = [
     'active'   => ['Aktiv',   'green'],
@@ -53,7 +54,9 @@ $n_persons   = count($contacts) - $n_companies;
           $icon = $c['type'] === 'company' ? '🏢' : '👤';
           $cat_arr = is_array($c['category']) ? $c['category'] : [];
         ?>
-          <tr data-type="<?= esc_attr($c['type']) ?>">
+          <tr class="lh-clickable-row lh-view-crm-btn"
+              data-type="<?= esc_attr($c['type']) ?>"
+              data-record="<?= esc_attr(json_encode($c)) ?>">
             <td>
               <strong>
                 <span style="margin-right:4px"><?= $icon ?></span><?= esc_html($c['name']) ?>
@@ -69,8 +72,6 @@ $n_persons   = count($contacts) - $n_companies;
             <td><?= $cat_arr ? esc_html(implode(', ', $cat_arr)) : '—' ?></td>
             <td><span class="lh-badge lh-badge-<?= $scolor ?>"><?= $slabel ?></span></td>
             <td class="actions">
-              <button class="lh-btn lh-btn-secondary lh-btn-sm lh-view-crm-btn"
-                data-record="<?= esc_attr(json_encode($c)) ?>">Vis</button>
               <button class="lh-btn lh-btn-secondary lh-btn-sm lh-edit-btn"
                 data-modal="modal-crm"
                 data-record="<?= esc_attr(json_encode($c)) ?>">Rediger</button>
@@ -203,13 +204,61 @@ $n_persons   = count($contacts) - $n_companies;
           </div>
           <div class="lh-form-row">
             <label>Telefon</label>
-            <input type="text" name="phone">
+            <div style="display:flex;gap:6px">
+              <select name="phone_cc" style="max-width:140px;flex:0 0 auto">
+                <?php foreach ($country_codes as $cn): ?>
+                  <option value="<?= esc_attr($cn['cc']) ?>" data-flag="<?= esc_attr($cn['flag']) ?>">
+                    <?= esc_html($cn['flag'] . ' ' . $cn['cc'] . ' ' . $cn['name']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <input type="text" name="phone_national" placeholder="91 23 45 67" style="flex:1">
+            </div>
           </div>
         </div>
         <div class="lh-form-row">
           <label>Adresse</label>
           <input type="text" name="address">
         </div>
+
+        <details class="lh-form-details" style="margin:12px 0 4px">
+          <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--lh-muted);padding:6px 0">
+            🔗 Lenker (LinkedIn, Instagram, Facebook, X, TikTok, valgfri)
+          </summary>
+          <div style="padding-top:10px">
+            <div class="lh-form-grid">
+              <div class="lh-form-row">
+                <label>LinkedIn</label>
+                <input type="text" name="linkedin_url" placeholder="https://linkedin.com/in/…">
+              </div>
+              <div class="lh-form-row">
+                <label>Instagram</label>
+                <input type="text" name="instagram_url" placeholder="https://instagram.com/…">
+              </div>
+            </div>
+            <div class="lh-form-grid">
+              <div class="lh-form-row">
+                <label>Facebook</label>
+                <input type="text" name="facebook_url" placeholder="https://facebook.com/…">
+              </div>
+              <div class="lh-form-row">
+                <label>X (tidligere Twitter)</label>
+                <input type="text" name="x_url" placeholder="https://x.com/…">
+              </div>
+            </div>
+            <div class="lh-form-grid">
+              <div class="lh-form-row">
+                <label>TikTok</label>
+                <input type="text" name="tiktok_url" placeholder="https://tiktok.com/@…">
+              </div>
+              <div class="lh-form-row">
+                <label>Valgfri URL</label>
+                <input type="text" name="custom_url" placeholder="https://…">
+              </div>
+            </div>
+          </div>
+        </details>
+
         <div class="lh-form-row">
           <label>Notater</label>
           <textarea name="notes" placeholder="Interne notater…"></textarea>
@@ -224,6 +273,28 @@ $n_persons   = count($contacts) - $n_companies;
   </div>
 </div>
 
+<style>
+/* Hele raden er klikkbar — viser cursor + hover-effekt */
+.lh-clickable-row { cursor: pointer; }
+.lh-clickable-row:hover { background: #f8fafc; }
+.lh-clickable-row:hover td:first-child strong { color: #1e3a5f; }
+
+/* Sosiale URL-ikoner i view-modal */
+.lh-social-icons { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
+.lh-social-icon {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px; border-radius:8px;
+  background:#f1f5f9; color:#1e293b;
+  text-decoration:none; font-size:13px; font-weight:500;
+  border:1px solid #e2e8f0;
+  transition:background .15s;
+}
+.lh-social-icon:hover { background:#e2e8f0 }
+
+/* Drill-down: hele person-raden klikkbar */
+.lh-person-row.lh-clickable { cursor:pointer; transition:background .15s }
+.lh-person-row.lh-clickable:hover { background:#f1f5f9 }
+</style>
 <script>
 /* ── Filter tabs ────────────────────────────────────────────────────────── */
 document.querySelectorAll('.lh-ftab').forEach(btn => {
@@ -249,6 +320,11 @@ document.getElementById('crm-search')?.addEventListener('input', function () {
     const textOk = !q || row.textContent.toLowerCase().includes(q);
     row.style.display = typeOk && textOk ? '' : 'none';
   });
+});
+
+/* ── Action-knapper i raden skal IKKE trigge view-modal ──────────────────── */
+document.querySelectorAll('#crm-table .actions').forEach(td => {
+  td.addEventListener('click', e => e.stopPropagation());
 });
 
 /* ── Type toggle in edit form ────────────────────────────────────────────── */

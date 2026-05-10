@@ -63,7 +63,8 @@
   };
 
   /* ── Delete confirm ─────────────────────────────────────────────────────── */
-  $(document).on('click', '.lh-delete-btn', function () {
+  $(document).on('click', '.lh-delete-btn', function (e) {
+    e.stopPropagation();
     const action = $(this).data('action');
     const id     = $(this).data('id');
     if (!confirm('Slette denne oppføringen?')) return;
@@ -124,17 +125,36 @@
     $(this).closest('.lh-brreg-results').hide();
   });
 
-  /* ── Edit pre-fill ───────────────────────────────────────────────────────── */
-  $(document).on('click', '.lh-edit-btn', function () {
-    const data   = $(this).data('record');
-    const target = $(this).data('modal');
-    const $modal = $('#' + target);
+  /* ── Phone splitter (E.164-ish "+47 91 23 45 67" → cc + national) ───────── */
+  // Lengste prefiks vinner. Liste matcher Edifice_CRM::country_codes() i PHP.
+  const KNOWN_CCS = ['+372','+370','+371','+358','+354','+353','+351','+420',
+                     '+47','+46','+45','+44','+43','+41','+39','+34','+33','+32',
+                     '+31','+30','+1','+49','+48','+52','+55','+61','+81','+86','+91'];
+  function splitPhone(stored) {
+    const v = String(stored || '').trim();
+    if (!v) return { cc: '+47', national: '' };
+    if (v[0] !== '+') return { cc: '+47', national: v };
+    const sorted = KNOWN_CCS.slice().sort((a, b) => b.length - a.length);
+    for (const cc of sorted) {
+      if (v.startsWith(cc)) return { cc, national: v.slice(cc.length).trim() };
+    }
+    return { cc: '+47', national: v.slice(1) };
+  }
+
+  /* ── Fyll inn skjema fra et record (delt mellom Rediger-knapp og view-modal) */
+  function lhFillForm($modal, data) {
     $modal.find('form')[0]?.reset();
-    Object.entries(data).forEach(([k, v]) => {
+    const phoneSplit = splitPhone(data.phone || '');
+    const augmented  = Object.assign({}, data, {
+      phone_cc:       phoneSplit.cc,
+      phone_national: phoneSplit.national,
+    });
+    Object.entries(augmented).forEach(([k, v]) => {
       const $el = $modal.find(`[name="${k}"]`);
-      if ($el.is('select'))                $el.val(v);
+      if (!$el.length) return;
+      if ($el.is('select'))                    $el.val(v);
       else if ($el.is('input[type=checkbox]')) $el.prop('checked', !!v);
-      else                                 $el.val(v);
+      else                                     $el.val(v ?? '');
     });
     // CRM type toggle
     const typeSelect = $modal.find('#crm-type-select');
@@ -143,6 +163,15 @@
       $modal.find('#crm-company-row').toggle(isPerson);
       $modal.find('#crm-orgnr-row').toggle(!isPerson);
     }
+  }
+
+  /* ── Edit pre-fill ───────────────────────────────────────────────────────── */
+  $(document).on('click', '.lh-edit-btn', function (e) {
+    e.stopPropagation();
+    const data   = $(this).data('record');
+    const target = $(this).data('modal');
+    const $modal = $('#' + target);
+    lhFillForm($modal, data);
     lhOpenModal(target);
   });
 
@@ -210,9 +239,26 @@
     const [sLabel, sCls] = crmStatusBadge[d.status] || ['?', 'lh-badge-gray'];
     fields += viewField('Status', `<span class="lh-badge ${sCls}">${sLabel}</span>`);
     if (d.email) fields += viewField('E-post',   `<a href="mailto:${escHtml(d.email)}">${escHtml(d.email)}</a>`);
-    if (d.phone) fields += viewField('Telefon',  `<a href="tel:${escHtml(d.phone)}">${escHtml(d.phone)}</a>`);
+    if (d.phone) fields += viewField('Telefon',  `<a href="tel:${escHtml((d.phone||'').replace(/\s+/g,''))}">${escHtml(d.phone)}</a>`);
     if (d.address)     fields += viewField('Adresse',   escHtml(d.address));
     if (d.created_at)  fields += viewField('Opprettet', fmtDate(d.created_at));
+
+    // Sosiale URL-er som klikkbare ikoner
+    const socials = [
+      { key: 'linkedin_url',  label: 'LinkedIn',  emoji: '💼' },
+      { key: 'instagram_url', label: 'Instagram', emoji: '📷' },
+      { key: 'facebook_url',  label: 'Facebook',  emoji: '📘' },
+      { key: 'x_url',         label: 'X',         emoji: '🅧' },
+      { key: 'tiktok_url',    label: 'TikTok',    emoji: '🎵' },
+      { key: 'custom_url',    label: 'Lenke',     emoji: '🔗' },
+    ];
+    const socialHtml = socials
+      .filter(s => d[s.key])
+      .map(s => `<a class="lh-social-icon" href="${escHtml(d[s.key])}" target="_blank" rel="noopener">${s.emoji} ${s.label}</a>`)
+      .join('');
+    if (socialHtml) {
+      fields += viewField('Lenker', `<div class="lh-social-icons">${socialHtml}</div>`);
+    }
     $('#view-crm-fields').html(fields);
 
     // Notes
@@ -239,15 +285,31 @@
           );
           return;
         }
-        const rows = r.data.map(p =>
-          `<div class="lh-person-row">
+        const rows = r.data.map((p, idx) =>
+          `<div class="lh-person-row lh-clickable" data-person-idx="${idx}">
             <span style="font-size:16px">👤</span>
             <span class="name">${escHtml(p.name)}</span>
-            ${p.email ? `<span class="meta"><a href="mailto:${escHtml(p.email)}" style="color:var(--lh-accent)">${escHtml(p.email)}</a></span>` : ''}
+            ${p.email ? `<span class="meta">${escHtml(p.email)}</span>` : ''}
             ${p.phone ? `<span class="meta">${escHtml(p.phone)}</span>` : ''}
+            <span style="margin-left:auto;color:var(--lh-muted);font-size:13px">→</span>
           </div>`
         ).join('');
-        $('#view-crm-persons-list').html(rows);
+        const $list = $('#view-crm-persons-list').html(rows);
+        // Persistent reference til personene så drill-down har full record
+        $list.data('persons', r.data);
+        $list.find('.lh-person-row').off('click.drill').on('click.drill', function () {
+          const idx     = parseInt(this.dataset.personIdx, 10);
+          const persons = $list.data('persons') || [];
+          const person  = persons[idx];
+          if (!person) return;
+          // Lukk current selskap-modal og åpne person-modal
+          lhCloseModal('modal-crm-view');
+          // Re-trigger view ved å simulere klikk på en knapp med data
+          const $hidden = $('<button class="lh-view-crm-btn" style="display:none"></button>')
+            .data('record', person)
+            .appendTo('body');
+          setTimeout(() => { $hidden.trigger('click').remove(); }, 200);
+        });
       });
     } else {
       // Person → show Gmail emails
@@ -263,17 +325,7 @@
     // "Rediger" button wires back to edit modal
     $('#view-crm-edit-btn').off('click').on('click', function () {
       lhCloseModal('modal-crm-view');
-      const $m = $('#modal-crm');
-      $m.find('form')[0]?.reset();
-      Object.entries(d).forEach(([k, v]) => {
-        const $el = $m.find(`[name="${k}"]`);
-        if ($el.is('select'))                $el.val(v);
-        else if ($el.is('input[type=checkbox]')) $el.prop('checked', !!v);
-        else                                 $el.val(v);
-      });
-      const isPerson = d.type === 'person';
-      $m.find('#crm-company-row').toggle(isPerson);
-      $m.find('#crm-orgnr-row').toggle(!isPerson);
+      lhFillForm($('#modal-crm'), d);
       lhOpenModal('modal-crm');
     });
 
