@@ -279,17 +279,25 @@ $n_persons   = count($contacts) - $n_companies;
 .lh-clickable-row:hover { background: #f8fafc; }
 .lh-clickable-row:hover td:first-child strong { color: #1e3a5f; }
 
-/* Sosiale URL-ikoner i view-modal */
-.lh-social-icons { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
+/* Sosiale URL-ikoner i view-modal — kompakte 32×32 SVG-knapper */
+.lh-social-icons { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px }
 .lh-social-icon {
-  display:inline-flex; align-items:center; gap:6px;
-  padding:6px 12px; border-radius:8px;
-  background:#f1f5f9; color:#1e293b;
-  text-decoration:none; font-size:13px; font-weight:500;
+  width:32px; height:32px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:7px;
+  background:#f1f5f9;
+  color:#475569;
+  text-decoration:none;
   border:1px solid #e2e8f0;
-  transition:background .15s;
+  transition:background .15s, color .15s, border-color .15s, transform .1s;
 }
-.lh-social-icon:hover { background:#e2e8f0 }
+.lh-social-icon svg { width:16px; height:16px; display:block }
+.lh-social-icon:hover {
+  background: var(--brand, #1e293b);
+  color:#ffffff;
+  border-color: var(--brand, #1e293b);
+}
+.lh-social-icon:active { transform: scale(.96) }
 
 /* Drill-down: hele person-raden klikkbar */
 .lh-person-row.lh-clickable { cursor:pointer; transition:background .15s }
