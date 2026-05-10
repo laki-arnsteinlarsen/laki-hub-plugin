@@ -86,11 +86,13 @@ class Edifice_Frontend {
      * Output the full HTML app shell with all sections pre-rendered.
      */
     public static function output_app() {
-        $plugin_url = EDIFICE_URL;
-        $ajax_url   = admin_url('admin-ajax.php');
-        $nonce      = wp_create_nonce('edifice_nonce');
-        $logout_url = wp_logout_url(home_url('/hub/'));
-        $user       = wp_get_current_user();
+        $plugin_url   = EDIFICE_URL;
+        $ajax_url     = admin_url('admin-ajax.php');
+        $nonce        = wp_create_nonce('edifice_nonce');
+        $logout_url   = wp_logout_url(home_url('/hub/'));
+        $user         = wp_get_current_user();
+        $settings_url = admin_url('admin.php?page=edifice-settings');
+        $gmail_on     = Edifice_Gmail::is_connected() ? 1 : 0;
         ?>
 <!DOCTYPE html>
 <html lang="no">
@@ -103,8 +105,11 @@ class Edifice_Frontend {
   <script src="<?= includes_url('js/jquery/jquery.min.js') ?>"></script>
   <script>
     var Edifice = {
-      ajax_url: '<?= esc_js($ajax_url) ?>',
-      nonce:    '<?= esc_js($nonce) ?>'
+      ajax_url:      '<?= esc_js($ajax_url) ?>',
+      nonce:         '<?= esc_js($nonce) ?>',
+      settings_url:  '<?= esc_js($settings_url) ?>',
+      gmail_enabled: <?= (int) $gmail_on ?>,
+      plugin_url:    '<?= esc_js($plugin_url) ?>'
     };
   </script>
 </head>
