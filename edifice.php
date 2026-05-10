@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.4.4'); // prospect: tøm-knapp for å rense data ved scoring-justering
+define('EDIFICE_VERSION', '1.4.5'); // hot-fix: Brreg ansatte-bucket bug — fra=1 + post-filter for ≥2
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

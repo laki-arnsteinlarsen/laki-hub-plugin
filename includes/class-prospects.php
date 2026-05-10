@@ -127,10 +127,14 @@ class Edifice_Prospects {
             $remaining = $batch_size - $stats['imported'];
             $page_size = min($remaining * 4, 100); // hent ekstra — geografi-filter kutter mange
 
+            // VIKTIG: Brreg-API bucketer ansatte i SSB-grupper. Gyldige
+            // grenseverdier er 0, 1, 5, 10, 20, 50, 100, 250. Verdier som
+            // 2, 3, 4 returnerer 0 treff fordi de faller midt i en bucket.
+            // Vi ber om 1-25 (gyldig) og post-filtrerer for ≥ ADVISORY_EMP_MIN.
             $url = self::BRREG_BASE . '?' . http_build_query([
                 'naeringskode'      => $nace,
-                'fraAntallAnsatte'  => self::ADVISORY_EMP_MIN,
-                'tilAntallAnsatte'  => self::ADVISORY_EMP_MAX,
+                'fraAntallAnsatte'  => 1,
+                'tilAntallAnsatte'  => 25,
                 'konkurs'           => 'false',
                 'underAvvikling'    => 'false',
                 'underTvangsavviklingEllerTvangsopplosning' => 'false',
@@ -149,6 +153,13 @@ class Edifice_Prospects {
 
                 $org_nr = $e['organisasjonsnummer'] ?? '';
                 if (!$org_nr) continue;
+
+                // Post-filter ansatte: Brreg-API ga oss alle 1-25, vi vil ≥ MIN.
+                // (Brreg kan ikke filtrere på 2-4 alene pga. SSB-bucketing.)
+                if (isset($e['antallAnsatte']) && is_numeric($e['antallAnsatte'])
+                    && (int) $e['antallAnsatte'] < self::ADVISORY_EMP_MIN) {
+                    continue;
+                }
 
                 // Geografi-filter: kommunenummer-prefiks (fylke)
                 $kn = $e['forretningsadresse']['kommunenummer'] ?? '';
