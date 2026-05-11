@@ -782,7 +782,9 @@
 }());
 
 /* ── Nettverk (Tier-system) ─────────────────────────────────────────────── */
-(function ($) {
+// Vent på DOMContentLoaded fordi admin.js lastes i <head>, FØR inline-skriptet
+// nederst i network.php som setter window.EdificeNetwork.
+jQuery(function ($) {
   'use strict';
   if (typeof window.EdificeNetwork === 'undefined') return;
 
@@ -916,5 +918,5 @@
     setTimeout(() => openEditModal(id, name), 250);
   });
 
-}(jQuery));
+});
 

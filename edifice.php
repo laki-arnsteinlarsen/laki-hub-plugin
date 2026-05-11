@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.6.4'); // log-modal z-index 100001 så den ligger over parent-modal
+define('EDIFICE_VERSION', '1.6.5'); // Network-IIFE venter på DOMContentLoaded (head-script + inline-state)
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
