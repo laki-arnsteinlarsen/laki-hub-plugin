@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.5.0'); // nettverk: Tier-system for kontakter (manuell oppfølging, ingen import)
+define('EDIFICE_VERSION', '1.5.1'); // nettverk: lagt til Nettverk-seksjon i frontend SPA (/hub/)
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
