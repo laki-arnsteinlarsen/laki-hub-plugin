@@ -2,14 +2,13 @@
 defined('ABSPATH') || exit;
 
 /**
- * Edifice_Network — Nettverksoppfølgning (Tier 1-4 system).
+ * Edifice_Network — Nettverksoppfølgning (Tier 1-3 system).
  *
  * Bygger på edifice_contacts. Tier-felt er lagt til via Migration 14.
  *
  * - Tier 1 = nære, viktige kontakter (månedlig pleie)
  * - Tier 2 = aktive bransjekontakter (kvartalsvis)
- * - Tier 3 = løse forbindelser (halvårlig)
- * - Tier 4 = passive (følg med, ikke aktiv pleie)
+ * - Tier 3 = løse forbindelser (sjekk status / følg opp årlig)
  * - tier IS NULL = ikke kategorisert som nettverkskontakt
  *
  * Modulen tilbyr passiv liste "trenger oppfølging" basert på tier_next_action.
@@ -20,8 +19,7 @@ class Edifice_Network {
     const TIERS = [
         1 => ['label' => 'Tier 1', 'emoji' => '🟢', 'desc' => 'Nære — månedlig'],
         2 => ['label' => 'Tier 2', 'emoji' => '🔵', 'desc' => 'Aktive — kvartalsvis'],
-        3 => ['label' => 'Tier 3', 'emoji' => '🟡', 'desc' => 'Løse — halvårlig'],
-        4 => ['label' => 'Tier 4', 'emoji' => '⚪', 'desc' => 'Passive — ingen pleie'],
+        3 => ['label' => 'Tier 3', 'emoji' => '🟡', 'desc' => 'Sjekk status — årlig'],
     ];
 
     const FREQUENCIES = [
@@ -50,7 +48,7 @@ class Edifice_Network {
             ARRAY_A
         );
 
-        $grouped = [1 => [], 2 => [], 3 => [], 4 => []];
+        $grouped = [1 => [], 2 => [], 3 => []];
         foreach ($rows as $r) {
             $tier = (int) $r['tier'];
             if (isset($grouped[$tier])) {

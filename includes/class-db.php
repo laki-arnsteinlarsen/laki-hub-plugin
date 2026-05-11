@@ -139,6 +139,23 @@ class Edifice_DB {
             UNIQUE KEY unique_listing_date (listing_id, snapshot_date)
         ) $c;");
 
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_contact_interactions (
+            id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            contact_id  BIGINT UNSIGNED NOT NULL,
+            project_id  BIGINT UNSIGNED DEFAULT NULL,
+            dato        DATE         NOT NULL,
+            tid         TIME         DEFAULT NULL,
+            kanal       VARCHAR(20)  NOT NULL,
+            retning     VARCHAR(10)  NOT NULL DEFAULT 'toveis',
+            sammendrag  VARCHAR(500) NOT NULL,
+            notat       TEXT         DEFAULT NULL,
+            kilde       VARCHAR(20)  NOT NULL DEFAULT 'manuell',
+            ekstern_ref VARCHAR(255) DEFAULT NULL,
+            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_contact_dato (contact_id, dato),
+            INDEX idx_ekstern_ref (ekstern_ref)
+        ) $c;");
+
         dbDelta("CREATE TABLE {$wpdb->prefix}edifice_prospects (
             id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             org_nr            VARCHAR(20)  NOT NULL,
@@ -421,6 +438,39 @@ class Edifice_DB {
                 created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_listing_date (listing_id, snapshot_date)
             ) $c;");
+        }
+
+        // ── Migration 15: edifice_contact_interactions (strukturert logg) ──────
+        // Erstatter fritekst-feltet tier_relation_note som primær logg.
+        // tier_relation_note beholdes som "statisk bakgrunn" om kontakten.
+        $interactions_table = $wpdb->prefix . 'edifice_contact_interactions';
+        if ($wpdb->get_var("SHOW TABLES LIKE '$interactions_table'") !== $interactions_table) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            $c = $wpdb->get_charset_collate();
+            dbDelta("CREATE TABLE $interactions_table (
+                id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                contact_id  BIGINT UNSIGNED NOT NULL,
+                project_id  BIGINT UNSIGNED DEFAULT NULL,
+                dato        DATE         NOT NULL,
+                tid         TIME         DEFAULT NULL,
+                kanal       VARCHAR(20)  NOT NULL,
+                retning     VARCHAR(10)  NOT NULL DEFAULT 'toveis',
+                sammendrag  VARCHAR(500) NOT NULL,
+                notat       TEXT         DEFAULT NULL,
+                kilde       VARCHAR(20)  NOT NULL DEFAULT 'manuell',
+                ekstern_ref VARCHAR(255) DEFAULT NULL,
+                created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact_dato (contact_id, dato),
+                INDEX idx_ekstern_ref (ekstern_ref)
+            ) $c;");
+        }
+
+        // ── Migration 16: reduser tier-system fra 4 til 3 nivåer ───────────────
+        // Eksisterende rader med tier=4 (passive) settes til NULL.
+        // Idempotent via flag-option.
+        if (! get_option('edifice_tier_4_purged', false)) {
+            $wpdb->query("UPDATE `$contact_table` SET tier = NULL WHERE tier = 4");
+            update_option('edifice_tier_4_purged', true);
         }
 
         // ── Migration 13: opprett edifice_prospects (prospekt-pipeline) ────────

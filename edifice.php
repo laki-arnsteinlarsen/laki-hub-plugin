@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.5.2'); // nettverk: routing-fix — 'network' lagt til i SECTIONS-array
+define('EDIFICE_VERSION', '1.6.0'); // strukturert interaksjonslogg + tier 4 fjernet
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -24,6 +24,7 @@ require_once EDIFICE_DIR . 'includes/class-products-digital.php';
 require_once EDIFICE_DIR . 'includes/class-sync-products.php';
 require_once EDIFICE_DIR . 'includes/class-prospects.php';
 require_once EDIFICE_DIR . 'includes/class-network.php';
+require_once EDIFICE_DIR . 'includes/class-interactions.php';
 require_once EDIFICE_DIR . 'includes/class-etsy.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
@@ -40,6 +41,7 @@ add_action('plugins_loaded', function () {
     Edifice_Prospects::migrate_websites();
     Edifice_Sync_Products::init();
     Edifice_Network::init();
+    Edifice_Interactions::init();
     Edifice_Admin::init();
     Edifice_Frontend::init();
 });

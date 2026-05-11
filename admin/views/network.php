@@ -43,7 +43,7 @@ $uncategorized = $wpdb->get_results(
       <div class="lh-stat-value"><?= $tier_count(2) ?></div>
     </div>
     <div class="lh-stat">
-      <div class="lh-stat-label">Tier 3 (halvårlig)</div>
+      <div class="lh-stat-label">Tier 3 (sjekk status årlig)</div>
       <div class="lh-stat-value yellow"><?= $tier_count(3) ?></div>
     </div>
     <div class="lh-stat">

@@ -467,7 +467,138 @@
       lhOpenModal('modal-crm');
     });
 
+    // Interaksjonslogg: last og rend, og knytt + Logg-knappen til denne kontakten
+    window.__edificeViewContact = { id: d.id, name: d.name };
+    loadInteractions(d.id);
+
     lhOpenModal('modal-crm-view');
+  });
+
+  /* ── Interaksjonslogg ───────────────────────────────────────────────────── */
+  const KANAL_LABELS = {
+    sms: '💬 SMS', epost: '✉️ E-post', telefon: '📞 Telefon',
+    mote: '🤝 Møte', lunsj: '🍽️ Lunsj', kaffe: '☕ Kaffe',
+    linkedin: '💼 LinkedIn', dm: '📩 DM', annet: '· Annet'
+  };
+  const RETNING_LABELS = { inn: '←', ut: '→', toveis: '↔' };
+
+  function loadInteractions(contactId) {
+    if (!contactId) return;
+    const $list = $('#view-crm-interactions-list');
+    $list.html('<div style="color:var(--lh-muted);font-size:13px;padding:8px 0">Laster…</div>');
+    $.post(Edifice.ajax_url, {
+      action: 'edifice_interaction_list',
+      nonce: Edifice.nonce,
+      contact_id: contactId,
+    }, function (r) {
+      if (!r.success) {
+        $list.html('<div style="color:#dc2626;font-size:13px">Feil ved henting: ' +
+          escHtml(r.data || 'ukjent feil') + '</div>');
+        return;
+      }
+      renderInteractions(r.data.interactions || []);
+    });
+  }
+
+  function renderInteractions(rows) {
+    const $list = $('#view-crm-interactions-list');
+    if (!rows.length) {
+      $list.html('<div style="color:var(--lh-muted);font-size:13px;padding:8px 0">' +
+        'Ingen loggede interaksjoner ennå.</div>');
+      return;
+    }
+    const html = rows.map(r => {
+      const dato = fmtDate(r.dato) + (r.tid ? ' ' + r.tid.slice(0,5) : '');
+      const kanal = KANAL_LABELS[r.kanal] || r.kanal;
+      const retning = RETNING_LABELS[r.retning] || '';
+      const sammendrag = escHtml(r.sammendrag);
+      const notat = r.notat ? `<div style="color:var(--lh-muted);font-size:12px;margin-top:4px;white-space:pre-wrap">${escHtml(r.notat)}</div>` : '';
+      const kildeBadge = r.kilde && r.kilde !== 'manuell'
+        ? `<span class="lh-badge lh-badge-gray" style="font-size:10px;margin-left:6px">${escHtml(r.kilde)}</span>`
+        : '';
+      return `<div class="lh-interaction-row" data-id="${r.id}"
+                   style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--lh-border)">
+        <div style="flex:0 0 110px;font-size:12px;color:var(--lh-muted)">
+          ${escHtml(dato)}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:13px">
+            <span style="color:var(--lh-muted);margin-right:4px">${retning}</span>
+            <strong>${escHtml(kanal)}</strong>${kildeBadge}
+          </div>
+          <div style="margin-top:2px">${sammendrag}</div>
+          ${notat}
+        </div>
+        <button class="lh-btn lh-btn-secondary lh-btn-sm js-interaction-delete"
+                data-id="${r.id}" title="Slett" style="align-self:flex-start;padding:2px 8px">×</button>
+      </div>`;
+    }).join('');
+    $list.html(html);
+  }
+
+  // + Logg-knapp: åpne log-modal
+  $(document).on('click', '#view-crm-log-btn', function () {
+    const ctx = window.__edificeViewContact;
+    if (!ctx || !ctx.id) return;
+    $('#interaction-contact-id').val(ctx.id);
+    $('#interaction-contact-name').text(ctx.name || '(ukjent)');
+    // Default dato = i dag
+    const today = new Date().toISOString().slice(0, 10);
+    $('#interaction-dato').val(today);
+    $('#interaction-tid').val('');
+    $('#interaction-kanal').val('sms');
+    $('#interaction-retning').val('toveis');
+    $('#interaction-sammendrag').val('');
+    $('#interaction-notat').val('');
+    lhOpenModal('modal-interaction-log');
+    setTimeout(() => $('#interaction-sammendrag').focus(), 100);
+  });
+
+  // Save interaction
+  $(document).on('click', '#interaction-save-btn', function () {
+    const contactId = parseInt($('#interaction-contact-id').val(), 10);
+    const sammendrag = $('#interaction-sammendrag').val().trim();
+    const dato = $('#interaction-dato').val();
+    if (!sammendrag) { alert('Sammendrag er påkrevd'); return; }
+    if (!dato) { alert('Dato er påkrevd'); return; }
+
+    $.post(Edifice.ajax_url, {
+      action: 'edifice_interaction_log',
+      nonce: Edifice.nonce,
+      contact_id: contactId,
+      dato: dato,
+      tid: $('#interaction-tid').val(),
+      kanal: $('#interaction-kanal').val(),
+      retning: $('#interaction-retning').val(),
+      sammendrag: sammendrag,
+      notat: $('#interaction-notat').val(),
+    }, function (r) {
+      if (!r.success) {
+        alert('Feil: ' + (r.data || 'ukjent'));
+        return;
+      }
+      lhCloseModal('modal-interaction-log');
+      renderInteractions(r.data.interactions || []);
+    });
+  });
+
+  // Delete interaction
+  $(document).on('click', '.js-interaction-delete', function (e) {
+    e.stopPropagation();
+    if (!confirm('Slett denne interaksjonen?')) return;
+    const id = parseInt($(this).data('id'), 10);
+    const ctx = window.__edificeViewContact;
+    $.post(Edifice.ajax_url, {
+      action: 'edifice_interaction_delete',
+      nonce: Edifice.nonce,
+      id: id,
+    }, function (r) {
+      if (!r.success) {
+        alert('Feil: ' + (r.data || 'ukjent'));
+        return;
+      }
+      if (ctx && ctx.id) loadInteractions(ctx.id);
+    });
   });
 
   /* ── Gmail loader ────────────────────────────────────────────────────────── */
