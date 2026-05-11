@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.6.1'); // interaksjonsseksjon også i Nettverk-modal
+define('EDIFICE_VERSION', '1.6.2'); // robust + Logg-handler med fallback fra DOM
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

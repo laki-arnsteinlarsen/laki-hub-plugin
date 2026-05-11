@@ -547,10 +547,25 @@
     $list.html(html);
   }
 
-  // Åpne log-modal — generell helper, brukes fra både CRM-view og Nettverk-modal
-  function openInteractionLogModal() {
-    const ctx = window.__edificeInteractionCtx;
-    if (!ctx || !ctx.id) return;
+  // Åpne log-modal — generell helper. Henter kontekst fra (a) window-state
+  // satt av kall-stedet, eller (b) fra modalens egne contact-id-felter som fallback.
+  function openInteractionLogModal(opts) {
+    opts = opts || {};
+    let ctx = window.__edificeInteractionCtx || {};
+    // Fallback: hent contact_id fra åpen network-modal hvis ctx mangler
+    if (!ctx.id) {
+      const nid = parseInt($('#network-modal-contact-id').val(), 10);
+      const nname = $('#network-modal-contact-name').text();
+      if (nid) ctx = { id: nid, name: nname, target: '#network-interactions-list' };
+    }
+    if (!ctx.id) {
+      console.error('Edifice: ingen contact-id funnet for interaksjonslogg', ctx);
+      alert('Kunne ikke finne kontakt-ID. Lukk og åpne nettverkskortet på nytt.');
+      return;
+    }
+    // Persistér så save/delete kan referere
+    window.__edificeInteractionCtx = ctx;
+
     $('#interaction-contact-id').val(ctx.id);
     $('#interaction-contact-name').text(ctx.name || '(ukjent)');
     const today = new Date().toISOString().slice(0, 10);
@@ -565,9 +580,15 @@
   }
 
   // + Logg-knapp i CRM view-modal
-  $(document).on('click', '#view-crm-log-btn', openInteractionLogModal);
+  $(document).on('click', '#view-crm-log-btn', function (e) {
+    e.preventDefault();
+    openInteractionLogModal();
+  });
   // + Logg-knapp i Nettverk-modal
-  $(document).on('click', '#network-log-interaction-btn', openInteractionLogModal);
+  $(document).on('click', '#network-log-interaction-btn', function (e) {
+    e.preventDefault();
+    openInteractionLogModal();
+  });
 
   // Save interaction
   $(document).on('click', '#interaction-save-btn', function () {
