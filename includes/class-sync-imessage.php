@@ -20,11 +20,70 @@ class Edifice_Sync_iMessage {
 
     public static function init() {
         add_action('wp_ajax_edifice_imessage_bulk_import', [__CLASS__, 'ajax_bulk_import']);
+        add_action('wp_ajax_edifice_sync_get_phone_contacts', [__CLASS__, 'ajax_get_phone_contacts']);
+        // CLI-vennlige endpoints (uten nonce, auth via edifice_key):
+        add_action('wp_ajax_nopriv_edifice_imessage_bulk_import', [__CLASS__, 'ajax_bulk_import']);
+        add_action('wp_ajax_nopriv_edifice_sync_get_phone_contacts', [__CLASS__, 'ajax_get_phone_contacts']);
+    }
+
+    /**
+     * Auth via enten WP-nonce (browser) eller edifice_key POST-param (CLI).
+     * Returnerer true ved gyldig auth, kaller wp_send_json_error() ellers.
+     */
+    private static function authenticate() {
+        // CLI-path: edifice_key
+        if (isset($_POST['edifice_key'])) {
+            $stored = get_option('edifice_autologin_key', '');
+            $given = sanitize_text_field($_POST['edifice_key']);
+            if ($stored && hash_equals($stored, $given)) {
+                $admins = get_users(['role' => 'administrator', 'number' => 1, 'fields' => 'ID']);
+                if (!empty($admins)) {
+                    wp_set_current_user((int) $admins[0]);
+                    return true;
+                }
+            }
+            wp_send_json_error('invalid edifice_key');
+        }
+        // Browser-path: nonce
+        check_ajax_referer('edifice_nonce', 'nonce');
+        if (! current_user_can('manage_options')) {
+            wp_send_json_error('forbidden');
+        }
+        return true;
+    }
+
+    public static function ajax_get_phone_contacts() {
+        self::authenticate();
+        global $wpdb;
+        $t = $wpdb->prefix . 'edifice_contacts';
+        $rows = $wpdb->get_results(
+            "SELECT id, name, tier, phone, mobile
+             FROM `$t`
+             WHERE tier IS NOT NULL
+               AND ( (phone IS NOT NULL AND phone <> '')
+                  OR (mobile IS NOT NULL AND mobile <> '') )
+             ORDER BY tier ASC, name ASC",
+            ARRAY_A
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            // Foretrekk mobile (iMessage primært) ellers phone
+            $num = !empty($r['mobile']) ? $r['mobile'] : $r['phone'];
+            // Normaliser: kun + og siffer
+            $num = preg_replace('/[^+\d]/', '', $num);
+            if (!$num || $num[0] !== '+') continue;
+            $out[] = [
+                'id'    => (int) $r['id'],
+                'name'  => $r['name'],
+                'tier'  => (int) $r['tier'],
+                'phone' => $num,
+            ];
+        }
+        wp_send_json_success($out);
     }
 
     public static function ajax_bulk_import() {
-        check_ajax_referer('edifice_nonce', 'nonce');
-        if (! current_user_can('manage_options')) wp_send_json_error('forbidden');
+        self::authenticate();
 
         $contact_id = (int) ($_POST['contact_id'] ?? 0);
         $raw = $_POST['messages'] ?? '';

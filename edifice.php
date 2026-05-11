@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.7.2'); // iMessage clean_content: ikke strip leading uppercase (OK forblir OK)
+define('EDIFICE_VERSION', '1.7.3'); // CLI-vennlige endpoints + get_phone_contacts
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
