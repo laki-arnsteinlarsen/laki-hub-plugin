@@ -232,9 +232,21 @@ $uncategorized = $wpdb->get_results(
       </div>
 
       <div class="lh-form-row">
-        <label for="network-modal-relation-note">Relasjonsnotat</label>
-        <textarea id="network-modal-relation-note" rows="4"
-                  placeholder="Hvordan kjenner du dem? Hva har dere snakket om? Hva kan dere hjelpe hverandre med?"></textarea>
+        <label for="network-modal-relation-note">Relasjonsnotat (statisk bakgrunn — ikke logg)</label>
+        <textarea id="network-modal-relation-note" rows="3"
+                  placeholder="Hvordan kjenner du dem? Generelle ting om relasjonen."></textarea>
+      </div>
+
+      <!-- Interaksjonslogg (strukturert) -->
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--lh-border)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <strong style="font-size:14px">📋 Interaksjoner</strong>
+          <button type="button" class="lh-btn lh-btn-primary lh-btn-sm" id="network-log-interaction-btn"
+                  style="margin-left:auto">+ Logg</button>
+        </div>
+        <div id="network-interactions-list">
+          <div style="color:var(--lh-muted);font-size:13px;padding:8px 0">Laster…</div>
+        </div>
       </div>
     </div>
     <div class="lh-modal-foot">
@@ -245,6 +257,68 @@ $uncategorized = $wpdb->get_results(
       <div style="flex:1"></div>
       <button class="lh-btn lh-btn-secondary lh-modal-close">Avbryt</button>
       <button class="lh-btn lh-btn-primary" id="network-modal-save-btn">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     LOG INTERACTION MODAL (delt; også brukt fra CRM-view)
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="lh-modal-overlay" id="modal-interaction-log">
+  <div class="lh-modal">
+    <div class="lh-modal-head">
+      <h3>Logg interaksjon</h3>
+      <button class="lh-modal-close">×</button>
+    </div>
+    <div class="lh-modal-body">
+      <input type="hidden" id="interaction-contact-id">
+      <div class="lh-form-row">
+        <label>Kontakt</label>
+        <div id="interaction-contact-name" style="font-weight:600;padding:6px 0"></div>
+      </div>
+      <div class="lh-form-grid">
+        <div class="lh-form-row">
+          <label for="interaction-dato">Dato <span style="color:#dc2626">*</span></label>
+          <input type="date" id="interaction-dato">
+        </div>
+        <div class="lh-form-row">
+          <label for="interaction-tid">Tid (valgfri)</label>
+          <input type="time" id="interaction-tid">
+        </div>
+      </div>
+      <div class="lh-form-grid">
+        <div class="lh-form-row">
+          <label for="interaction-kanal">Kanal <span style="color:#dc2626">*</span></label>
+          <select id="interaction-kanal">
+            <?php foreach (Edifice_Interactions::KANALER as $k => $label): ?>
+              <option value="<?= esc_attr($k) ?>"><?= esc_html($label) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="lh-form-row">
+          <label for="interaction-retning">Retning</label>
+          <select id="interaction-retning">
+            <?php foreach (Edifice_Interactions::RETNINGER as $k => $label): ?>
+              <option value="<?= esc_attr($k) ?>" <?= $k === 'toveis' ? 'selected' : '' ?>><?= esc_html($label) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      </div>
+      <div class="lh-form-row">
+        <label for="interaction-sammendrag">Sammendrag <span style="color:#dc2626">*</span></label>
+        <input type="text" id="interaction-sammendrag" maxlength="500"
+               placeholder="Kort beskrivelse av interaksjonen">
+      </div>
+      <div class="lh-form-row">
+        <label for="interaction-notat">Notat (valgfritt)</label>
+        <textarea id="interaction-notat" rows="3"
+                  placeholder="Detaljer, sitater, neste steg …"></textarea>
+      </div>
+    </div>
+    <div class="lh-modal-foot">
+      <div style="flex:1"></div>
+      <button class="lh-btn lh-btn-secondary lh-modal-close">Avbryt</button>
+      <button class="lh-btn lh-btn-primary" id="interaction-save-btn">Lagre</button>
     </div>
   </div>
 </div>

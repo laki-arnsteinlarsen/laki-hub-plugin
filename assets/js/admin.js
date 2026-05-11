@@ -468,8 +468,10 @@
     });
 
     // Interaksjonslogg: last og rend, og knytt + Logg-knappen til denne kontakten
-    window.__edificeViewContact = { id: d.id, name: d.name };
-    loadInteractions(d.id);
+    window.__edificeInteractionCtx = {
+      id: d.id, name: d.name, target: '#view-crm-interactions-list'
+    };
+    loadInteractions(d.id, '#view-crm-interactions-list');
 
     lhOpenModal('modal-crm-view');
   });
@@ -482,9 +484,17 @@
   };
   const RETNING_LABELS = { inn: '←', ut: '→', toveis: '↔' };
 
-  function loadInteractions(contactId) {
+  // Gjeldende kontekst: hvilken kontakt + hvilken liste vi rendrer til
+  // Settes når enten CRM-view eller Nettverk-modal åpnes.
+  window.__edificeInteractionCtx = window.__edificeInteractionCtx || null;
+
+  // Eksponert globalt så Nettverk-modulen (egen IIFE) kan kalle den
+  window.loadEdificeInteractions = function (id, sel) { loadInteractions(id, sel); };
+
+  function loadInteractions(contactId, targetSelector) {
     if (!contactId) return;
-    const $list = $('#view-crm-interactions-list');
+    const $list = $(targetSelector);
+    if (!$list.length) return;
     $list.html('<div style="color:var(--lh-muted);font-size:13px;padding:8px 0">Laster…</div>');
     $.post(Edifice.ajax_url, {
       action: 'edifice_interaction_list',
@@ -496,12 +506,13 @@
           escHtml(r.data || 'ukjent feil') + '</div>');
         return;
       }
-      renderInteractions(r.data.interactions || []);
+      renderInteractionsInto(r.data.interactions || [], targetSelector);
     });
   }
 
-  function renderInteractions(rows) {
-    const $list = $('#view-crm-interactions-list');
+  function renderInteractionsInto(rows, targetSelector) {
+    const $list = $(targetSelector);
+    if (!$list.length) return;
     if (!rows.length) {
       $list.html('<div style="color:var(--lh-muted);font-size:13px;padding:8px 0">' +
         'Ingen loggede interaksjoner ennå.</div>');
@@ -536,13 +547,12 @@
     $list.html(html);
   }
 
-  // + Logg-knapp: åpne log-modal
-  $(document).on('click', '#view-crm-log-btn', function () {
-    const ctx = window.__edificeViewContact;
+  // Åpne log-modal — generell helper, brukes fra både CRM-view og Nettverk-modal
+  function openInteractionLogModal() {
+    const ctx = window.__edificeInteractionCtx;
     if (!ctx || !ctx.id) return;
     $('#interaction-contact-id').val(ctx.id);
     $('#interaction-contact-name').text(ctx.name || '(ukjent)');
-    // Default dato = i dag
     const today = new Date().toISOString().slice(0, 10);
     $('#interaction-dato').val(today);
     $('#interaction-tid').val('');
@@ -552,10 +562,16 @@
     $('#interaction-notat').val('');
     lhOpenModal('modal-interaction-log');
     setTimeout(() => $('#interaction-sammendrag').focus(), 100);
-  });
+  }
+
+  // + Logg-knapp i CRM view-modal
+  $(document).on('click', '#view-crm-log-btn', openInteractionLogModal);
+  // + Logg-knapp i Nettverk-modal
+  $(document).on('click', '#network-log-interaction-btn', openInteractionLogModal);
 
   // Save interaction
   $(document).on('click', '#interaction-save-btn', function () {
+    const ctx = window.__edificeInteractionCtx;
     const contactId = parseInt($('#interaction-contact-id').val(), 10);
     const sammendrag = $('#interaction-sammendrag').val().trim();
     const dato = $('#interaction-dato').val();
@@ -578,7 +594,8 @@
         return;
       }
       lhCloseModal('modal-interaction-log');
-      renderInteractions(r.data.interactions || []);
+      const target = (ctx && ctx.target) ? ctx.target : '#view-crm-interactions-list';
+      renderInteractionsInto(r.data.interactions || [], target);
     });
   });
 
@@ -587,7 +604,7 @@
     e.stopPropagation();
     if (!confirm('Slett denne interaksjonen?')) return;
     const id = parseInt($(this).data('id'), 10);
-    const ctx = window.__edificeViewContact;
+    const ctx = window.__edificeInteractionCtx;
     $.post(Edifice.ajax_url, {
       action: 'edifice_interaction_delete',
       nonce: Edifice.nonce,
@@ -597,7 +614,7 @@
         alert('Feil: ' + (r.data || 'ukjent'));
         return;
       }
-      if (ctx && ctx.id) loadInteractions(ctx.id);
+      if (ctx && ctx.id) loadInteractions(ctx.id, ctx.target);
     });
   });
 
@@ -765,6 +782,17 @@
     $('#network-modal-title').text(data.tier ? 'Rediger nettverkskontakt' : 'Legg til som nettverkskontakt');
     // Show "Fjern"-button only when contact already has a tier
     $('#network-modal-clear-btn').toggle(!!data.tier);
+
+    // Sett interaksjons-kontekst og last logg inn i nettverk-modalens egen liste
+    window.__edificeInteractionCtx = {
+      id: contactId,
+      name: data.name || contactName || '(ukjent)',
+      target: '#network-interactions-list',
+    };
+    if (window.loadEdificeInteractions) {
+      window.loadEdificeInteractions(contactId, '#network-interactions-list');
+    }
+
     lhOpenModal('network-modal');
   }
 
