@@ -25,6 +25,7 @@ class Edifice_Admin {
         add_submenu_page('edifice', 'Inntekt',       'Inntekt',       'manage_options', 'edifice-revenue',      [__CLASS__, 'page_revenue']);
         add_submenu_page('edifice', 'Produkter',     'Produkter',     'manage_options', 'edifice-products',     [__CLASS__, 'page_products']);
         add_submenu_page('edifice', 'Prospekter',    'Prospekter',    'manage_options', 'edifice-prospects',    [__CLASS__, 'page_prospects']);
+        add_submenu_page('edifice', 'Nettverk',      'Nettverk',      'manage_options', 'edifice-network',      [__CLASS__, 'page_network']);
         add_submenu_page('edifice', 'Innstillinger', 'Innstillinger', 'manage_options', 'edifice-settings',     [__CLASS__, 'page_settings']);
     }
 
@@ -59,5 +60,6 @@ class Edifice_Admin {
     public static function page_revenue()   { include EDIFICE_DIR . 'admin/views/revenue.php'; }
     public static function page_products()  { include EDIFICE_DIR . 'admin/views/products.php'; }
     public static function page_prospects() { include EDIFICE_DIR . 'admin/views/prospects.php'; }
+    public static function page_network()   { include EDIFICE_DIR . 'admin/views/network.php'; }
     public static function page_settings()  { include EDIFICE_DIR . 'admin/views/settings.php'; }
 }

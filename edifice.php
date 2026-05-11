@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.4.9'); // etsy: Open API v3 PKCE-OAuth + listing-sync (klar for godkjent keystring)
+define('EDIFICE_VERSION', '1.5.0'); // nettverk: Tier-system for kontakter (manuell oppfølging, ingen import)
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -23,6 +23,7 @@ require_once EDIFICE_DIR . 'includes/class-revenue.php';
 require_once EDIFICE_DIR . 'includes/class-products-digital.php';
 require_once EDIFICE_DIR . 'includes/class-sync-products.php';
 require_once EDIFICE_DIR . 'includes/class-prospects.php';
+require_once EDIFICE_DIR . 'includes/class-network.php';
 require_once EDIFICE_DIR . 'includes/class-etsy.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
@@ -38,6 +39,7 @@ add_action('plugins_loaded', function () {
     Edifice_DB::maybe_migrate();
     Edifice_Prospects::migrate_websites();
     Edifice_Sync_Products::init();
+    Edifice_Network::init();
     Edifice_Admin::init();
     Edifice_Frontend::init();
 });

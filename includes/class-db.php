@@ -21,6 +21,12 @@ class Edifice_DB {
             postal_address  VARCHAR(500) DEFAULT NULL,
             category        TEXT         DEFAULT NULL,
             status          ENUM('lead','active','inactive') NOT NULL DEFAULT 'active',
+            tier            TINYINT UNSIGNED DEFAULT NULL,
+            tier_frequency  VARCHAR(20)  DEFAULT NULL,
+            tier_last_contact DATE       DEFAULT NULL,
+            tier_next_action DATE        DEFAULT NULL,
+            tier_next_action_note VARCHAR(500) DEFAULT NULL,
+            tier_relation_note TEXT      DEFAULT NULL,
             linkedin_url    VARCHAR(500) DEFAULT NULL,
             instagram_url   VARCHAR(500) DEFAULT NULL,
             facebook_url    VARCHAR(500) DEFAULT NULL,
@@ -300,6 +306,30 @@ class Edifice_DB {
             if (! isset($cols['mobile'])) {
                 $wpdb->query("ALTER TABLE `$contact_table`
                               ADD COLUMN `mobile` VARCHAR(50) DEFAULT NULL AFTER `phone`");
+            }
+
+            // ── Migration 14: nettverksoppfølging (tier-system) ───────────────
+            // Tier 1 = månedlig pleie, Tier 2 = kvartalsvis, Tier 3 = halvårlig,
+            // Tier 4 = passiv. NULL = ikke kategorisert som nettverkskontakt.
+            $tier_cols = [
+                'tier'                => "TINYINT UNSIGNED DEFAULT NULL AFTER `status`",
+                'tier_frequency'      => "VARCHAR(20)  DEFAULT NULL AFTER `tier`",
+                'tier_last_contact'   => "DATE         DEFAULT NULL AFTER `tier_frequency`",
+                'tier_next_action'    => "DATE         DEFAULT NULL AFTER `tier_last_contact`",
+                'tier_next_action_note' => "VARCHAR(500) DEFAULT NULL AFTER `tier_next_action`",
+                'tier_relation_note'  => "TEXT         DEFAULT NULL AFTER `tier_next_action_note`",
+            ];
+            foreach ($tier_cols as $col => $definition) {
+                if (! isset($cols[$col])) {
+                    $wpdb->query("ALTER TABLE `$contact_table` ADD COLUMN `$col` $definition");
+                }
+            }
+            // Add index on tier for fast filtering in Nettverk-fanen
+            $idx = $wpdb->get_var(
+                "SHOW INDEX FROM `$contact_table` WHERE Key_name = 'idx_tier'"
+            );
+            if (! $idx) {
+                $wpdb->query("ALTER TABLE `$contact_table` ADD INDEX `idx_tier` (`tier`)");
             }
         }
 

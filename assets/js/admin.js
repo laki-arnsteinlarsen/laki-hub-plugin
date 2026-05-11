@@ -612,3 +612,129 @@
   document.head.appendChild(link);
 }());
 
+/* ── Nettverk (Tier-system) ─────────────────────────────────────────────── */
+(function ($) {
+  'use strict';
+  if (typeof window.EdificeNetwork === 'undefined') return;
+
+  const N = window.EdificeNetwork;
+  let currentEditId = null;
+
+  function openEditModal(contactId, contactName) {
+    currentEditId = contactId;
+    const data = N.contacts[contactId] || {};
+    $('#network-modal-contact-id').val(contactId);
+    $('#network-modal-contact-name').text(data.name || contactName || '(ukjent)');
+    $('#network-modal-tier').val(data.tier ?? '');
+    $('#network-modal-frequency').val(data.frequency || '');
+    $('#network-modal-last-contact').val(data.last_contact || '');
+    $('#network-modal-next-action').val(data.next_action || '');
+    $('#network-modal-next-action-note').val(data.next_action_note || '');
+    $('#network-modal-relation-note').val(data.relation_note || '');
+    $('#network-modal-title').text(data.tier ? 'Rediger nettverkskontakt' : 'Legg til som nettverkskontakt');
+    // Show "Fjern"-button only when contact already has a tier
+    $('#network-modal-clear-btn').toggle(!!data.tier);
+    lhOpenModal('network-modal');
+  }
+
+  // Open edit modal on row click
+  $(document).on('click', '.js-network-edit', function (e) {
+    if ($(e.target).closest('button').length) return; // ignore button clicks
+    const id = parseInt($(this).data('contact-id'), 10);
+    if (!id) return;
+    openEditModal(id);
+  });
+
+  // Save tier-data
+  $(document).on('click', '#network-modal-save-btn', function () {
+    const tierVal = $('#network-modal-tier').val();
+    if (tierVal === '') {
+      if (!confirm('Du har ikke valgt tier. Fjerne fra nettverket?')) return;
+    }
+    lhAjax('edifice_network_save', {
+      contact_id: $('#network-modal-contact-id').val(),
+      tier: tierVal,
+      tier_frequency: $('#network-modal-frequency').val(),
+      tier_last_contact: $('#network-modal-last-contact').val(),
+      tier_next_action: $('#network-modal-next-action').val(),
+      tier_next_action_note: $('#network-modal-next-action-note').val(),
+      tier_relation_note: $('#network-modal-relation-note').val(),
+    }, function () {
+      lhCloseModal('network-modal');
+      setTimeout(() => location.reload(), 400);
+    });
+  });
+
+  // Clear (remove from network)
+  $(document).on('click', '#network-modal-clear-btn', function () {
+    if (!confirm('Fjern denne kontakten fra nettverkssystemet? (Kontakten beholdes i CRM.)')) return;
+    lhAjax('edifice_network_clear', {
+      contact_id: $('#network-modal-contact-id').val()
+    }, function () {
+      lhCloseModal('network-modal');
+      setTimeout(() => location.reload(), 400);
+    });
+  });
+
+  // Log contact (✓ Logg-knapp): set tier_last_contact = today, roll next_action
+  $(document).on('click', '.js-network-log', function (e) {
+    e.stopPropagation();
+    const id = parseInt($(this).data('contact-id'), 10);
+    if (!id) return;
+    lhAjax('edifice_network_log_contact', { contact_id: id }, function () {
+      setTimeout(() => location.reload(), 400);
+    });
+  });
+
+  /* ── Add modal: search uncategorized contacts ──────────────────────────── */
+  $(document).on('click', '#network-add-btn', function () {
+    $('#network-add-search').val('');
+    $('#network-add-results').empty().hide();
+    lhOpenModal('network-add-modal');
+    setTimeout(() => $('#network-add-search').focus(), 100);
+  });
+
+  function renderAddResults(query) {
+    const q = (query || '').toLowerCase().trim();
+    const $r = $('#network-add-results');
+    if (!q || q.length < 2) {
+      $r.empty().hide();
+      return;
+    }
+    const matches = N.uncategorized
+      .filter(c => c.name.toLowerCase().includes(q))
+      .slice(0, 30);
+
+    if (!matches.length) {
+      $r.html('<div style="padding:12px;color:var(--lh-muted)">Ingen treff i ukategoriserte kontakter. Eksisterende nettverkskontakter må redigeres fra hovedlisten.</div>').show();
+      return;
+    }
+
+    const html = matches.map(c => {
+      const icon = c.type === 'person' ? '👤' : '🏢';
+      return `<div class="js-network-add-pick" data-contact-id="${c.id}"
+                   data-contact-name="${c.name.replace(/"/g, '&quot;')}"
+                   style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--lh-border)">
+                ${icon} <strong>${$('<div>').text(c.name).html()}</strong>
+              </div>`;
+    }).join('');
+    $r.html(html).show();
+  }
+
+  $(document).on('input', '#network-add-search', function () {
+    renderAddResults($(this).val());
+  });
+
+  $(document).on('click', '.js-network-add-pick', function () {
+    const id = parseInt($(this).data('contact-id'), 10);
+    const name = $(this).data('contact-name');
+    lhCloseModal('network-add-modal');
+    // Inject a stub into N.contacts so modal can find it
+    if (!N.contacts[id]) {
+      N.contacts[id] = { id, name, tier: null };
+    }
+    setTimeout(() => openEditModal(id, name), 250);
+  });
+
+}(jQuery));
+
