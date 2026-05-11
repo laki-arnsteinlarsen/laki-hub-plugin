@@ -43,6 +43,7 @@ class Edifice_Interactions {
         'gmail'    => 'Gmail',
         'kalender' => 'Kalender',
         'slack'    => 'Slack',
+        'imessage' => 'iMessage',
         'annet'    => 'Annet',
     ];
 

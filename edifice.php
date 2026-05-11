@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.7.0'); // iMessage bulk-import: Edifice_Sync_iMessage
+define('EDIFICE_VERSION', '1.7.1'); // iMessage: 'imessage' i KILDER + deterministisk ekstern_ref
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

@@ -41,8 +41,16 @@ class Edifice_Sync_iMessage {
         $errors = [];
 
         foreach ($messages as $m) {
+            // ekstern_ref: bruk message_id hvis MCP-en leverer det; ellers utled
+            // en stabil hash av timestamp + is_from_me som dedup-nøkkel.
+            $date_iso = (string) ($m['date'] ?? '');
             $msg_id = isset($m['message_id']) ? (string) $m['message_id'] : '';
-            if (! $msg_id) { $skipped_empty++; continue; }
+            if (! $msg_id) {
+                if (! $date_iso) { $skipped_empty++; continue; }
+                $is_out = ! empty($m['is_from_me']) ? '1' : '0';
+                // Format: <ISO-dato>T<tid>:<0|1>  → stabil og lesbar
+                $msg_id = $date_iso . ':' . $is_out;
+            }
 
             if (Edifice_Interactions::exists_by_ref('imessage', $msg_id)) {
                 $skipped_dedup++;
@@ -52,7 +60,6 @@ class Edifice_Sync_iMessage {
             $content = self::clean_content($m['content'] ?? '');
             if (! trim($content)) { $skipped_empty++; continue; }
 
-            $date_iso = (string) ($m['date'] ?? '');
             $dato = substr($date_iso, 0, 10);
             $tid  = strlen($date_iso) >= 19 ? substr($date_iso, 11, 8) : null;
             if (! $dato || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dato)) {
