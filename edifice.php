@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.6.6'); // log-modal som partial — rendret én gang på body-nivå i SPA
+define('EDIFICE_VERSION', '1.7.0'); // iMessage bulk-import: Edifice_Sync_iMessage
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -25,6 +25,7 @@ require_once EDIFICE_DIR . 'includes/class-sync-products.php';
 require_once EDIFICE_DIR . 'includes/class-prospects.php';
 require_once EDIFICE_DIR . 'includes/class-network.php';
 require_once EDIFICE_DIR . 'includes/class-interactions.php';
+require_once EDIFICE_DIR . 'includes/class-sync-imessage.php';
 require_once EDIFICE_DIR . 'includes/class-etsy.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
@@ -42,6 +43,7 @@ add_action('plugins_loaded', function () {
     Edifice_Sync_Products::init();
     Edifice_Network::init();
     Edifice_Interactions::init();
+    Edifice_Sync_iMessage::init();
     Edifice_Admin::init();
     Edifice_Frontend::init();
 });
