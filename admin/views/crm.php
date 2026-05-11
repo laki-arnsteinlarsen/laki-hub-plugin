@@ -148,7 +148,7 @@ $n_persons   = count($contacts) - $n_companies;
 <!-- ══════════════════════════════════════════════════════════════════════════
      LOG INTERACTION MODAL
 ══════════════════════════════════════════════════════════════════════════ -->
-<div class="lh-modal-overlay" id="modal-interaction-log">
+<div class="lh-modal-overlay" id="modal-interaction-log" style="z-index:100001">
   <div class="lh-modal">
     <div class="lh-modal-head">
       <h3>Logg interaksjon</h3>
