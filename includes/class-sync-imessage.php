@@ -118,9 +118,10 @@ class Edifice_Sync_iMessage {
         // Likte / Lo av / Elsker / Synd om / Lo av / Spurte (norske reaksjons-prefiks)
         $content = preg_replace('/^(Likte|Lo\s+av|Elsker|Synd\s+om|Spurte|Liked|Loved|Laughed at)\s+/u', '', $content);
 
-        // 3. Strip leading control char + tall (f.eks. "eHei", "4Takk", "uHei")
-        //    iMessage lagrer noen ganger en disambiguation-byte foran teksten.
-        $content = preg_replace('/^[a-zA-Z\d]\s*(?=[A-ZÆØÅ])/u', '', $content);
+        // 3. Strip leading single LOWERCASE letter eller siffer fulgt av storbokstav
+        //    (typedstream-lengdebyte): "eHei" → "Hei", "4Takk" → "Takk", "uHei" → "Hei".
+        //    Beholder reelle ord som "OK" (begge bokstaver er storbokstav).
+        $content = preg_replace('/^[a-z\d]\s*(?=[A-ZÆØÅ])/u', '', $content);
 
         // 4. Trim
         return trim($content);
