@@ -34,7 +34,9 @@ class Edifice_Admin {
         // Remove WP's default site icon before it fires at priority 99
         remove_action('admin_head', 'wp_site_icon', 99);
         wp_enqueue_style('edifice-css', EDIFICE_URL . 'assets/css/admin.css',  [], EDIFICE_VERSION);
-        wp_enqueue_script('edifice-js', EDIFICE_URL . 'assets/js/admin.js',   ['jquery'], EDIFICE_VERSION, true);
+        // Lastes i <head> (in_footer=false) så lhAjax/lhOpenModal er definert
+        // før inline-skripter i body kjører (f.eks. window.EdificeNetwork = {...}).
+        wp_enqueue_script('edifice-js', EDIFICE_URL . 'assets/js/admin.js',   ['jquery'], EDIFICE_VERSION, false);
         wp_localize_script('edifice-js', 'Edifice', [
             'ajax_url'      => admin_url('admin-ajax.php'),
             'nonce'         => wp_create_nonce('edifice_nonce'),
