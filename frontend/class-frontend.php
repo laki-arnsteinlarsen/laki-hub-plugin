@@ -115,6 +115,10 @@ class Edifice_Frontend {
 </head>
 <body class="lh-app">
 
+  <?php /* Delt log-modal renders FØRST på body-nivå så guarden i partialen kan blokkere
+            duplikat-inclusions fra crm.php/network.php nedenfor. */ ?>
+  <?php include EDIFICE_DIR . 'admin/views/_interaction-log-modal.php'; ?>
+
   <!-- Sidebar -->
   <nav class="lh-sidebar">
     <div class="lh-sidebar-logo"><span class="lh-logo-icon">🌋</span><span>Edifice</span></div>
