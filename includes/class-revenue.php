@@ -37,16 +37,18 @@ class Edifice_Revenue {
         global $wpdb;
         $t = $wpdb->prefix . 'edifice_revenue';
         $fields = [
-            'contact_id'  => !empty($data['contact_id'])  ? (int)$data['contact_id']  : null,
-            'project_id'  => !empty($data['project_id'])  ? (int)$data['project_id']  : null,
-            'type'        => sanitize_text_field($data['type'] ?? 'invoice'),
-            'description' => sanitize_textarea_field($data['description'] ?? ''),
-            'amount'      => (float)($data['amount'] ?? 0),
-            'currency'    => strtoupper(sanitize_text_field($data['currency'] ?? 'NOK')),
-            'date'        => sanitize_text_field($data['date'] ?? date('Y-m-d')),
-            'due_date'    => sanitize_text_field($data['due_date'] ?? '') ?: null,
-            'status'      => sanitize_text_field($data['status'] ?? 'draft'),
-            'invoice_nr'  => sanitize_text_field($data['invoice_nr'] ?? ''),
+            'contact_id'    => !empty($data['contact_id'])  ? (int)$data['contact_id']  : null,
+            'project_id'    => !empty($data['project_id'])  ? (int)$data['project_id']  : null,
+            'type'          => sanitize_text_field($data['type'] ?? 'invoice'),
+            'description'   => sanitize_textarea_field($data['description'] ?? ''),
+            'amount'        => (float)($data['amount'] ?? 0),
+            'amount_ex_vat' => isset($data['amount_ex_vat']) && $data['amount_ex_vat'] !== '' ? (float)$data['amount_ex_vat'] : null,
+            'vat_amount'    => isset($data['vat_amount'])    && $data['vat_amount']    !== '' ? (float)$data['vat_amount']    : null,
+            'currency'      => strtoupper(sanitize_text_field($data['currency'] ?? 'NOK')),
+            'date'          => sanitize_text_field($data['date'] ?? date('Y-m-d')),
+            'due_date'      => sanitize_text_field($data['due_date'] ?? '') ?: null,
+            'status'        => sanitize_text_field($data['status'] ?? 'draft'),
+            'invoice_nr'    => sanitize_text_field($data['invoice_nr'] ?? ''),
         ];
         if (!empty($data['id'])) {
             $wpdb->update($t, $fields, ['id' => (int)$data['id']]);

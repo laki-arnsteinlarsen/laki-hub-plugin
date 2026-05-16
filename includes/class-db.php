@@ -88,20 +88,22 @@ class Edifice_DB {
         ) $c;");
 
         dbDelta("CREATE TABLE {$wpdb->prefix}edifice_revenue (
-            id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            contact_id   BIGINT UNSIGNED DEFAULT NULL,
-            project_id   BIGINT UNSIGNED DEFAULT NULL,
-            type         ENUM('invoice','payment','recurring') NOT NULL DEFAULT 'invoice',
-            description  VARCHAR(500) DEFAULT NULL,
-            amount       DECIMAL(12,2) NOT NULL DEFAULT 0,
-            currency     VARCHAR(3)   NOT NULL DEFAULT 'NOK',
-            date         DATE         NOT NULL,
-            due_date     DATE         DEFAULT NULL,
-            status       ENUM('draft','sent','paid','overdue') NOT NULL DEFAULT 'draft',
-            invoice_nr   VARCHAR(50)  DEFAULT NULL,
-            external_id  VARCHAR(100) DEFAULT NULL,
-            unimicro_raw LONGTEXT     DEFAULT NULL,
-            created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            contact_id    BIGINT UNSIGNED DEFAULT NULL,
+            project_id    BIGINT UNSIGNED DEFAULT NULL,
+            type          ENUM('invoice','payment','recurring') NOT NULL DEFAULT 'invoice',
+            description   VARCHAR(500) DEFAULT NULL,
+            amount        DECIMAL(12,2) NOT NULL DEFAULT 0,
+            amount_ex_vat DECIMAL(12,2) DEFAULT NULL,
+            vat_amount    DECIMAL(12,2) DEFAULT NULL,
+            currency      VARCHAR(3)   NOT NULL DEFAULT 'NOK',
+            date          DATE         NOT NULL,
+            due_date      DATE         DEFAULT NULL,
+            status        ENUM('draft','sent','paid','overdue') NOT NULL DEFAULT 'draft',
+            invoice_nr    VARCHAR(50)  DEFAULT NULL,
+            external_id   VARCHAR(100) DEFAULT NULL,
+            unimicro_raw  LONGTEXT     DEFAULT NULL,
+            created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_external_id (external_id)
         ) $c;");
 
@@ -580,6 +582,19 @@ class Edifice_DB {
             $idx = $wpdb->get_var("SHOW INDEX FROM `$revenue_table` WHERE Key_name = 'idx_external_id'");
             if (! $idx) {
                 $wpdb->query("ALTER TABLE `$revenue_table` ADD INDEX `idx_external_id` (`external_id`)");
+            }
+
+            // ── Migration 19: amount_ex_vat + vat_amount på edifice_revenue ────
+            // Tilrettelegger for visning av netto + MVA + brutto i Inntekt-modulen.
+            // UniMicro-webhooken populerer disse automatisk; manuelle entries kan
+            // sette dem via Edifice-skjema.
+            if (! isset($rev_cols['amount_ex_vat'])) {
+                $wpdb->query("ALTER TABLE `$revenue_table`
+                              ADD COLUMN `amount_ex_vat` DECIMAL(12,2) DEFAULT NULL AFTER `amount`");
+            }
+            if (! isset($rev_cols['vat_amount'])) {
+                $wpdb->query("ALTER TABLE `$revenue_table`
+                              ADD COLUMN `vat_amount` DECIMAL(12,2) DEFAULT NULL AFTER `amount_ex_vat`");
             }
         }
 
