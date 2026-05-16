@@ -55,42 +55,50 @@ sudo docker exec wordpress-l78r6g3o96gmke1f64raie3e wp --allow-root plugin list
 
 ```
 edifice/
-├── edifice.php               # Hovedfil — init, hooks, require_once av alle klasser
+├── edifice.php                    # Hovedfil — init, hooks, require_once av alle klasser
 ├── includes/
-│   ├── class-db.php          # DB-installasjon og migrering
-│   ├── class-crm.php         # CRM-modul
-│   ├── class-network.php     # Nettverks-tier-system
-│   ├── class-interactions.php # Interaksjonslogg
-│   ├── class-projects.php    # Prosjekter
-│   ├── class-time.php        # Timeføring
-│   ├── class-revenue.php     # Inntekt
-│   ├── class-products.php    # Digitale produkter
-│   ├── class-prospects.php   # Brreg-prospektering
-│   ├── class-frontend.php    # SPA-rendering
-│   └── class-sync-imessage.php # iMessage-synk
+│   ├── class-db.php               # DB-installasjon og migrering
+│   ├── class-crm.php              # CRM-modul
+│   ├── class-network.php          # Nettverks-tier-system
+│   ├── class-interactions.php     # Interaksjonslogg
+│   ├── class-projects.php         # Prosjekter
+│   ├── class-time.php             # Timeføring
+│   ├── class-revenue.php          # Inntekt
+│   ├── class-products-digital.php # Digitale produkter
+│   ├── class-sync-products.php    # Gumroad/Chrome-synk for produkter
+│   ├── class-prospects.php        # Brreg-prospektering
+│   ├── class-hosting.php          # Driftsovervåking (Kuma + UptimeRobot)
+│   ├── class-sync-imessage.php    # iMessage-synk
+│   ├── class-brreg.php            # Brreg-oppslag
+│   ├── class-gmail.php            # Gmail OAuth
+│   └── class-etsy.php             # Etsy-integrasjon (arkivert)
 ├── admin/
-│   ├── admin.php             # WP-admin-menyer
+│   ├── admin.php                  # WP-admin-menyer
 │   └── views/
 │       ├── crm.php
 │       ├── network.php
-│       ├── interactions.php
 │       ├── projects.php
 │       ├── time.php
 │       ├── revenue.php
 │       ├── products.php
 │       ├── prospects.php
+│       ├── hosting.php
+│       ├── settings.php
 │       └── _interaction-log-modal.php   # Felles modal — inkluderes på body-nivå
+├── frontend/
+│   └── class-frontend.php         # SPA-rendering på /hub/
 └── assets/
     ├── js/
-    │   ├── frontend.js       # SPA-routing — SECTIONS-array MÅ oppdateres ved ny seksjon
-    │   └── admin.js          # Lastes i <head> (in_footer=false)
+    │   ├── frontend.js            # SPA-routing — SECTIONS-array MÅ oppdateres ved ny seksjon
+    │   └── admin.js               # Lastes i <head> (in_footer=false)
     └── css/
-        └── frontend.css
+        ├── frontend.css
+        └── admin.css
 ```
 
 ---
 
-## Database-tabeller (11 stk)
+## Database-tabeller (12 stk)
 
 | Tabell | Innhold |
 |--------|---------|
@@ -105,8 +113,10 @@ edifice/
 | `edifice_product_listings` | Kanaldetaljer per produkt (Gumroad/KDP/PromptBase) |
 | `edifice_product_revenue` | Omsetning per produkt |
 | `edifice_prospects` | Brreg-prospekter med advisory-scoring |
+| `edifice_sites` | Hosting: siter på Hetzner med Kuma/UR-monitor-IDer + månedskost |
 
-Nåværende versjon: **1.7.4** (siste commit `829c837`).
+Nåværende versjon: **1.8.1** — hosting-modul fase 1 (drift + kostnad).
+Siste migrasjonsnummer: **17**.
 
 ---
 
@@ -160,7 +170,8 @@ leser `window.EdificeNetwork` som settes via inline-skript i `network.php`.
 | `edifice_network_save/clear/log_contact` | `Edifice_Network` |
 | `edifice_interaction_log/delete/list` | `Edifice_Interactions` |
 | `edifice_imessage_bulk_import` | `Edifice_Sync_iMessage` |
-| `edifice_sync_get_phone_contacts` | Edifice_Sync_iMessage |
+| `edifice_sync_get_phone_contacts` | `Edifice_Sync_iMessage` |
+| `edifice_hosting_list/status/save/delete/test_alert` | `Edifice_Hosting` |
 | `edifice_daily_product_sync` | WP Cron, kl. 06:00 UTC |
 
 CLI-vennlige endpoints autentiserer via `edifice_key` (auto-login-nøkkel) i stedet for nonce.
@@ -190,6 +201,58 @@ CLI-vennlige endpoints autentiserer via `edifice_key` (auto-login-nøkkel) i ste
 - NACE-filter: 46/47/61/62/63/64/68/70/71/72/73/78/82/86 — fylker: 03/31/32/33/34 — ansatte: 2–25
 - Scoring maks 83 (hot ≥ 50): ansatte (max 30), omsetning (max 35), modenhet (max 10), kontaktinfo (max 8)
 - **Brreg-quirk:** `antallAnsatte`-parametret bucketer i SSB-grupper. Gyldige cutoffs: 0, 1, 5, 10, 20, 50, 100, 250. Post-filtrer i PHP.
+
+---
+
+## Hosting-modul (fase 1 — v1.8.0+)
+
+Driftsovervåking og kostnadskontroll for sitene på Hetzner-riggen. Live status fra
+Uptime Kuma + UptimeRobot, månedskost per site og snitt over Hetzner-server.
+
+### Status-flyt
+
+- `class-hosting.php` har 60s transient-cache (`edifice_hosting_status`). View-fila
+  rendrer tabell fra DB med ⚪-plassholdere, og henter live status asynkront via
+  `edifice_hosting_status`-AJAX ved sidelast. "Oppdater"-knapp sender `refresh=1`
+  som tømmer transienten før ny fetch.
+- Status per site slås sammen fra Kuma + UptimeRobot basert på `kuma_monitor_id`
+  og `uptimerobot_monitor_id` i `edifice_sites`. Begge er valgfrie.
+
+### Kuma-API — KRITISK quirk
+
+**Uptime Kuma 1.x har INGEN `/api/monitors` REST-endepunkt.** Fase 1-specen var feil
+på dette punktet — Kuma sin frontend-SPA fanger ukjente paths og returnerer HTML.
+Det offisielle, dokumenterte API-et er `/metrics` (Prometheus-format) med HTTP
+Basic auth: tom username, API-nøkkel som passord (`Basic base64(":<key>")`).
+
+Vi parser linjene for `monitor_status` (1=up, 0=down, 2=pending, 3=maintenance)
+og `monitor_response_time` (ms, -1 når nede) per `monitor_id`-label.
+
+Oppetid 24h/30d er ikke eksponert via `/metrics`. UI-en henter den kolonnen fra
+UptimeRobot (`all_time_uptime_ratio`). For Kuma-oppetid senere må vi enten lage
+en intern statusside og bruke `/api/status-page/heartbeat/{slug}`, eller vente på
+Kuma 2.x sitt fulle REST API.
+
+### UptimeRobot-API
+
+`POST /v2/getMonitors` med `api_key` i form-encoded body. Status: 2=up, 8=down,
+9=down (annen variant), 0=paused.
+
+### Innstillinger (lagres i wp_options)
+
+| Option | Innhold |
+|--------|---------|
+| `edifice_kuma_base_url` | `https://status.arnsteinlarsen.no` |
+| `edifice_kuma_api_key` | Bearer-token fra Kuma Settings → API Keys |
+| `edifice_uptimerobot_key` | API-nøkkel fra UptimeRobot My Settings |
+| `edifice_slack_webhook_hosting` | Webhook til `#hosting-varsler` |
+| `edifice_hetzner_monthly_eur` | Fast månedskost (default 35) |
+| `edifice_sites_seeded` | Flagg — seedingen kjørte allerede |
+
+### Test-varsling
+
+`edifice_hosting_test_alert`-AJAX poster en testmelding til Slack-webhooken slik
+at man kan verifisere at #hosting-varsler får varsler før Kuma/UR utløser dem.
 
 ---
 
