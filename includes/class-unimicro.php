@@ -183,7 +183,10 @@ class Edifice_Unimicro {
             case 42003: return 'sent';    // sendt til inkasso — behold som sent
             case 42004: return 'paid';    // betalt
             case 42005: return 'overdue'; // purret
-            default:    return 'draft';
+            case 42006: return 'paid';    // kreditert/avsluttet — regnes som sluttbehandlet
+            default:
+                error_log('[Edifice UniMicro] Ukjent StatusCode: ' . var_export($code, true));
+                return 'draft';
         }
     }
 
