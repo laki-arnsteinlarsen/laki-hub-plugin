@@ -181,26 +181,30 @@ class Edifice_Unimicro {
             throw new \RuntimeException('Entity.ID mangler');
         }
 
-        $invoice_nr = isset($entity['InvoiceNumber']) ? (string) $entity['InvoiceNumber'] : '';
-        $date       = isset($entity['InvoiceDate'])     ? substr((string) $entity['InvoiceDate'], 0, 10) : date('Y-m-d');
-        $due_date   = isset($entity['PaymentDueDate'])  ? substr((string) $entity['PaymentDueDate'], 0, 10) : null;
-        $amount     = isset($entity['TaxInclusiveAmountCurrency']) ? (float) $entity['TaxInclusiveAmountCurrency'] : 0.0;
-        $currency   = strtoupper((string) ($entity['CurrencyCode']['Code'] ?? 'NOK')) ?: 'NOK';
-        $status     = self::map_status(isset($entity['StatusCode']) ? (int) $entity['StatusCode'] : null);
-        $customer   = isset($entity['CustomerName']) ? (string) $entity['CustomerName'] : '';
-        $contact_id = self::resolve_contact_id($customer);
+        $invoice_nr    = isset($entity['InvoiceNumber']) ? (string) $entity['InvoiceNumber'] : '';
+        $date          = isset($entity['InvoiceDate'])    ? substr((string) $entity['InvoiceDate'], 0, 10)    : date('Y-m-d');
+        $due_date      = isset($entity['PaymentDueDate']) ? substr((string) $entity['PaymentDueDate'], 0, 10) : null;
+        $amount        = isset($entity['TaxInclusiveAmountCurrency']) ? (float) $entity['TaxInclusiveAmountCurrency'] : 0.0;
+        $amount_ex_vat = isset($entity['TaxExclusiveAmountCurrency']) ? (float) $entity['TaxExclusiveAmountCurrency'] : null;
+        $vat_amount    = isset($entity['VatTotalsAmountCurrency'])    ? (float) $entity['VatTotalsAmountCurrency']    : null;
+        $currency      = strtoupper((string) ($entity['CurrencyCode']['Code'] ?? 'NOK')) ?: 'NOK';
+        $status        = self::map_status(isset($entity['StatusCode']) ? (int) $entity['StatusCode'] : null);
+        $customer      = isset($entity['CustomerName']) ? (string) $entity['CustomerName'] : '';
+        $contact_id    = self::resolve_contact_id($customer);
 
         $fields = [
-            'type'         => 'invoice',
-            'description'  => sanitize_textarea_field($customer),
-            'amount'       => $amount,
-            'currency'     => $currency,
-            'date'         => $date,
-            'due_date'     => $due_date ?: null,
-            'status'       => $status,
-            'invoice_nr'   => sanitize_text_field($invoice_nr),
-            'external_id'  => $external_id,
-            'unimicro_raw' => $raw_body,
+            'type'          => 'invoice',
+            'description'   => sanitize_textarea_field($customer),
+            'amount'        => $amount,
+            'amount_ex_vat' => $amount_ex_vat,
+            'vat_amount'    => $vat_amount,
+            'currency'      => $currency,
+            'date'          => $date,
+            'due_date'      => $due_date ?: null,
+            'status'        => $status,
+            'invoice_nr'    => sanitize_text_field($invoice_nr),
+            'external_id'   => $external_id,
+            'unimicro_raw'  => $raw_body,
         ];
         if ($contact_id !== null) {
             $fields['contact_id'] = $contact_id;

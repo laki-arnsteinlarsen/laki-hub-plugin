@@ -44,17 +44,21 @@ $status_map = [
       <?php if ($items): ?>
       <table class="lh-table">
         <thead>
-          <tr><th>Faktura#</th><th>Klient</th><th>Beskrivelse</th><th>Beløp</th><th>Dato</th><th>Forfaller</th><th>Status</th><th></th></tr>
+          <tr><th>Faktura#</th><th>Klient</th><th>Beskrivelse</th><th>Eks. mva</th><th>MVA</th><th>Ink. mva</th><th>Dato</th><th>Forfaller</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
         <?php foreach ($items as $item):
           [$slabel, $scolor] = $status_map[$item['status']] ?? ['?','gray'];
+          $ex_vat   = isset($item['amount_ex_vat']) && $item['amount_ex_vat'] !== null && $item['amount_ex_vat'] !== '' ? (float)$item['amount_ex_vat'] : null;
+          $vat_amt  = isset($item['vat_amount'])    && $item['vat_amount']    !== null && $item['vat_amount']    !== '' ? (float)$item['vat_amount']    : null;
         ?>
           <tr>
             <td><?= esc_html($item['invoice_nr']) ?: '—' ?></td>
             <td><?= esc_html($item['contact_name'] ?? '—') ?></td>
             <td><?= esc_html(wp_trim_words($item['description'], 8)) ?></td>
-            <td class="amount"><?= number_format($item['amount'], 0, ',', ' ') ?> <?= esc_html($item['currency']) ?></td>
+            <td class="amount" style="color:var(--lh-muted)"><?= $ex_vat   !== null ? number_format($ex_vat,   0, ',', ' ') : '—' ?></td>
+            <td class="amount" style="color:var(--lh-muted)"><?= $vat_amt  !== null ? number_format($vat_amt,  0, ',', ' ') : '—' ?></td>
+            <td class="amount"><strong><?= number_format($item['amount'], 0, ',', ' ') ?></strong> <?= esc_html($item['currency']) ?></td>
             <td style="white-space:nowrap"><?= date_i18n('d.m.Y', strtotime($item['date'])) ?></td>
             <td style="white-space:nowrap"><?= $item['due_date'] ? date_i18n('d.m.Y', strtotime($item['due_date'])) : '—' ?></td>
             <td><span class="lh-badge lh-badge-<?= $scolor ?>"><?= $slabel ?></span></td>
@@ -124,8 +128,18 @@ $status_map = [
         </div>
         <div class="lh-form-grid">
           <div class="lh-form-row">
-            <label>Beløp (NOK) *</label>
-            <input type="number" name="amount" step="100" required>
+            <label>Beløp eks. mva</label>
+            <input type="number" name="amount_ex_vat" step="0.01">
+          </div>
+          <div class="lh-form-row">
+            <label>MVA-beløp</label>
+            <input type="number" name="vat_amount" step="0.01">
+          </div>
+        </div>
+        <div class="lh-form-grid">
+          <div class="lh-form-row">
+            <label>Beløp ink. mva *</label>
+            <input type="number" name="amount" step="0.01" required>
           </div>
           <div class="lh-form-row">
             <label>Valuta</label>

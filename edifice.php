@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.9.0'); // unimicro: webhook-mottaker for DNBregnskap fakturasynk
+define('EDIFICE_VERSION', '1.9.1'); // revenue: vis netto + MVA + brutto i Inntekt-modulen
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
