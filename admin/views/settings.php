@@ -61,32 +61,8 @@ if (!empty($_POST['_gmail_test'])) {
     edifice_gmail_render_verify_notice($verify);
 }
 
-// ── Etsy callback + credentials ───────────────────────────────────────────
-if (!empty($_GET['_etsy_callback']) && !empty($_GET['code'])) {
-    $ok = Edifice_Etsy::handle_callback(
-        sanitize_text_field($_GET['code']),
-        sanitize_text_field($_GET['state'] ?? '')
-    );
-    echo $ok
-        ? '<div class="notice notice-success"><p>✅ Etsy koblet til. Klikk "Synk listings" for å hente produktene.</p></div>'
-        : '<div class="notice notice-error"><p>Etsy-kobling feilet. Sjekk Keystring/Shared Secret og at callback-URL i Etsy-appen matcher.</p></div>';
-}
-
-if (!empty($_GET['_etsy_disconnect'])) {
-    check_admin_referer('edifice_etsy_disconnect');
-    Edifice_Etsy::disconnect();
-    wp_safe_redirect(admin_url('admin.php?page=edifice-settings'));
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['edifice_etsy_save'])) {
-    check_admin_referer('edifice_etsy_settings');
-    update_option(Edifice_Etsy::OPT_CREDS, [
-        'keystring'     => sanitize_text_field($_POST['etsy_keystring']     ?? ''),
-        'shared_secret' => sanitize_text_field($_POST['etsy_shared_secret'] ?? ''),
-    ]);
-    echo '<div class="notice notice-success"><p>Etsy-legitimasjon lagret.</p></div>';
-}
+// Etsy: API-tilgang avslått av Etsy mai 2026. UI viser info-boks i stedet
+// for OAuth-form. Edifice_Etsy-klassen ligger igjen i kodebasen som arkiv.
 
 // Handle disconnect
 if (!empty($_GET['_gmail_disconnect'])) {
@@ -212,130 +188,27 @@ $auth_url  = Edifice_Gmail::get_auth_url();
     </div>
   </div>
 
-  <!-- Etsy card -->
-  <?php
-    $etsy_creds     = get_option(Edifice_Etsy::OPT_CREDS, []);
-    $etsy_connected = Edifice_Etsy::is_connected();
-    $etsy_tokens    = get_option(Edifice_Etsy::OPT_TOKENS, []);
-  ?>
+  <!-- Etsy card — API access denied (mai 2026) -->
   <div class="lh-card" style="margin-top:24px">
     <div class="lh-card-head">
       <h2>🎨 Etsy-integrasjon</h2>
-      <span class="lh-badge <?= $etsy_connected ? 'lh-badge-green' : 'lh-badge-gray' ?>">
-        <?= $etsy_connected ? 'Koblet til' : 'Ikke koblet' ?>
-      </span>
+      <span class="lh-badge lh-badge-gray">API-tilgang avslått</span>
     </div>
     <div class="lh-card-body">
-      <p style="font-size:13px;color:var(--lh-muted);margin:0 0 20px">
-        Auto-sync av Etsy-listings og daglig omsetnings-snapshot.
-        Krever en Etsy-app fra <code>etsy.com/developers/your-apps</code> med PKCE-OAuth.
+      <div style="padding:18px 20px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px">
+        <p style="margin:0 0 12px;font-weight:600">⚠️ Etsy avslo søknad om API-tilgang (mai 2026)</p>
+        <p style="margin:0 0 8px;font-size:13px;color:var(--lh-text)">
+          Etsy har strammet inn godkjenningskriteriene de siste årene og aksepterer ikke alltid interne apper uten tydelig tredjepartsverdi. De har bekreftet at de ikke vil revurdere.
+        </p>
+        <p style="margin:0;font-size:13px;color:var(--lh-text)">
+          <strong>Workaround:</strong> Bruk <a href="<?= esc_url(admin_url('admin.php?page=edifice-products')) ?>">CSV-import på Produkter-siden</a> for engangs-registrering av listings. Omsetning legges inn manuelt per måned, eller via et nytt CSV-import-pass når du eksporterer fra Etsy.
+        </p>
+      </div>
+      <p style="margin-top:16px;font-size:11px;color:var(--lh-muted)">
+        Edifice_Etsy-klassen ligger igjen i kodebasen som arkiv — kan gjenbrukes hvis Etsy senere endrer policy.
       </p>
-
-      <?php if ($etsy_connected): ?>
-        <div style="display:flex;align-items:center;gap:16px;padding:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;margin-bottom:20px">
-          <span style="font-size:28px">🎨</span>
-          <div>
-            <div style="font-weight:600;color:#9a3412">Etsy er koblet til</div>
-            <div style="font-size:12px;color:var(--lh-muted);margin-top:2px">
-              Shop ID: <?= esc_html($etsy_tokens['shop_id'] ?? '?') ?> ·
-              User ID: <?= esc_html($etsy_tokens['user_id'] ?? '?') ?>
-            </div>
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <button type="button" class="lh-btn lh-btn-primary" id="etsy-sync-btn">🔄 Synk listings</button>
-          <button type="button" class="lh-btn lh-btn-secondary" id="etsy-test-btn">🧪 Test tilkobling</button>
-          <a href="<?= esc_url(wp_nonce_url(admin_url('admin.php?page=edifice-settings&_etsy_disconnect=1'), 'edifice_etsy_disconnect')) ?>"
-             class="lh-btn lh-btn-danger"
-             onclick="return confirm('Koble fra Etsy?')">Koble fra</a>
-        </div>
-        <div id="etsy-result" style="margin-top:14px"></div>
-      <?php else: ?>
-        <form method="post" action="">
-          <?php wp_nonce_field('edifice_etsy_settings'); ?>
-          <div class="lh-form-grid" style="max-width:640px;margin-bottom:16px">
-            <div class="lh-form-row" style="margin-bottom:0">
-              <label>Etsy Keystring</label>
-              <input type="text" name="etsy_keystring"
-                     value="<?= esc_attr($etsy_creds['keystring'] ?? '') ?>"
-                     placeholder="abcd1234efgh5678…">
-            </div>
-            <div class="lh-form-row" style="margin-bottom:0">
-              <label>Etsy Shared Secret</label>
-              <input type="password" name="etsy_shared_secret"
-                     value="<?= esc_attr($etsy_creds['shared_secret'] ?? '') ?>"
-                     placeholder="…">
-            </div>
-          </div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <button type="submit" name="edifice_etsy_save" value="1" class="lh-btn lh-btn-secondary">
-              Lagre legitimasjon
-            </button>
-            <?php if (!empty($etsy_creds['keystring'])): ?>
-              <button type="button" class="lh-btn lh-btn-primary" id="etsy-connect-btn">
-                🔗 Koble til Etsy
-              </button>
-            <?php endif; ?>
-          </div>
-        </form>
-
-        <div style="margin-top:24px;padding:18px 20px;background:#f8fafc;border:1px solid var(--lh-border);border-radius:10px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--lh-muted);margin-bottom:10px">
-            Oppsettsveiledning
-          </div>
-          <ol style="margin:0;padding-left:20px;font-size:13px;line-height:2;color:var(--lh-text)">
-            <li>Gå til <a href="https://www.etsy.com/developers/your-apps" target="_blank" rel="noopener">etsy.com/developers/your-apps</a> → Create a New App</li>
-            <li>Application name: <code>Edifice (LAKI)</code></li>
-            <li>Website: <code>https://edifice.arnsteinlarsen.no</code></li>
-            <li>Callback URL:<br>
-              <code style="display:inline-block;margin-top:4px;background:#e2e8f0;padding:4px 8px;border-radius:5px;font-size:12px">
-                <?= esc_html(Edifice_Etsy::redirect_uri()) ?>
-              </code>
-            </li>
-            <li>Etter godkjenning: kopier <strong>Keystring</strong> og <strong>Shared Secret</strong> hit, lagre, klikk <em>Koble til Etsy</em></li>
-          </ol>
-        </div>
-      <?php endif; ?>
     </div>
   </div>
-
-  <script>
-  (function () {
-    const $ = jQuery;
-    document.getElementById('etsy-connect-btn')?.addEventListener('click', function () {
-      $.post(Edifice.ajax_url, { action: 'edifice_etsy_get_auth_url', nonce: Edifice.nonce }, r => {
-        if (r.success && r.data.url) window.location.href = r.data.url;
-        else alert('Kunne ikke starte Etsy-OAuth: ' + (r.data || 'ukjent'));
-      });
-    });
-    document.getElementById('etsy-sync-btn')?.addEventListener('click', function () {
-      const $btn = $(this).prop('disabled', true).text('⏳ Synker …');
-      $.post(Edifice.ajax_url, { action: 'edifice_etsy_sync_listings', nonce: Edifice.nonce }, r => {
-        $btn.prop('disabled', false).text('🔄 Synk listings');
-        const out = document.getElementById('etsy-result');
-        if (r.success && r.data.ok) {
-          out.innerHTML = `<div style="padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px">
-            ✅ Sync ferdig — ${r.data.synced.new} nye, ${r.data.synced.updated} oppdatert (av ${r.data.total_fetched} hentet).</div>`;
-        } else {
-          out.innerHTML = `<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:13px">
-            ❌ Sync feilet: ${(r.data && r.data.error) || 'ukjent'}</div>`;
-        }
-      });
-    });
-    document.getElementById('etsy-test-btn')?.addEventListener('click', function () {
-      $.post(Edifice.ajax_url, { action: 'edifice_etsy_verify', nonce: Edifice.nonce }, r => {
-        const out = document.getElementById('etsy-result');
-        if (r.success && r.data.ok) {
-          out.innerHTML = `<div style="padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px">
-            ✅ Tilkoblet shop: <strong>${r.data.shop_name}</strong> (ID ${r.data.shop_id})</div>`;
-        } else {
-          out.innerHTML = `<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:13px">
-            ❌ ${(r.data && r.data.error) || 'Tilkobling feilet'}</div>`;
-        }
-      });
-    });
-  })();
-  </script>
 
   <!-- Auto-login card -->
   <div id="autologin" class="lh-card" style="margin-top:24px">

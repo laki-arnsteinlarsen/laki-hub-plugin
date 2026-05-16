@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.7.3'); // CLI-vennlige endpoints + get_phone_contacts
+define('EDIFICE_VERSION', '1.7.4'); // products: CSV-import for listings + Etsy API avslått (info-boks)
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -75,6 +75,7 @@ add_action('wp_ajax_edifice_product_revenue_save',   ['Edifice_Products_Digital'
 add_action('wp_ajax_edifice_product_revenue_delete', ['Edifice_Products_Digital', 'ajax_delete_revenue']);
 add_action('wp_ajax_edifice_listings_for_product',   ['Edifice_Products_Digital', 'ajax_listings_for_product']);
 add_action('wp_ajax_edifice_listings_for_channel',   ['Edifice_Products_Digital', 'ajax_listings_for_channel']);
+add_action('wp_ajax_edifice_listings_import_csv',    ['Edifice_Products_Digital', 'ajax_import_csv']);
 
 // AJAX handlers — product sync
 add_action('wp_ajax_edifice_sync_gumroad',          ['Edifice_Sync_Products', 'ajax_trigger_gumroad']);

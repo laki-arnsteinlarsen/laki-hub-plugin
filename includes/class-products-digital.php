@@ -390,4 +390,110 @@ class Edifice_Products_Digital {
         wp_send_json_success(['listings' => $listings ?: []]);
     }
 
+    // ── CSV-import av listings (Etsy m.fl. uten API) ─────────────────────────
+    //
+    // Akseptert format: CSV med header-rad. Kolonner detekteres case-insensitive:
+    //   Title / Name / Listing Title  — produktnavn (påkrevd)
+    //   URL / Listing URL             — link til listing (anbefalt)
+    //   Price                         — desimal
+    //   Currency                      — 3-bokstav, default 'USD'
+    //   Status / Listing Status       — default 'live'
+    //   Notes                         — fritekst
+
+    public static function import_listings_csv(string $csv_text, string $platform): array {
+        global $wpdb;
+        $tp = $wpdb->prefix . 'edifice_products';
+        $tl = $wpdb->prefix . 'edifice_product_listings';
+
+        $lines = preg_split('/\r\n|\r|\n/', trim($csv_text));
+        if (count($lines) < 2) {
+            return ['ok' => false, 'error' => 'CSV må ha header-rad + minst én datarad'];
+        }
+
+        $header = str_getcsv(array_shift($lines));
+        $map    = [];
+        foreach ($header as $i => $h) {
+            $key = strtolower(trim($h));
+            if (in_array($key, ['title', 'name', 'listing title', 'product name'], true)) $map['title'] = $i;
+            elseif (in_array($key, ['url', 'listing url', 'link'], true))                  $map['url'] = $i;
+            elseif (in_array($key, ['price', 'pris'], true))                                $map['price'] = $i;
+            elseif (in_array($key, ['currency', 'valuta'], true))                            $map['currency'] = $i;
+            elseif (in_array($key, ['status', 'listing status'], true))                      $map['status'] = $i;
+            elseif (in_array($key, ['notes', 'notater'], true))                              $map['notes'] = $i;
+        }
+        if (!isset($map['title'])) {
+            return ['ok' => false, 'error' => 'CSV mangler "Title"-kolonne (eller Name / Listing Title)'];
+        }
+
+        $stats = ['new_products' => 0, 'new_listings' => 0, 'updated' => 0, 'errors' => 0, 'rows' => count($lines)];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') continue;
+            $row = str_getcsv($line);
+            $title = trim($row[$map['title']] ?? '');
+            if ($title === '') { $stats['errors']++; continue; }
+
+            $url      = isset($map['url'])      ? trim($row[$map['url']]      ?? '') : '';
+            $price    = isset($map['price'])    ? (float) ($row[$map['price']] ?? 0) : 0.0;
+            $currency = isset($map['currency']) ? strtoupper(trim($row[$map['currency']] ?? 'USD')) : 'USD';
+            $status   = isset($map['status'])   ? trim($row[$map['status']]   ?? 'live') : 'live';
+            $notes    = isset($map['notes'])    ? trim($row[$map['notes']]    ?? '') : '';
+
+            $existing_listing_id = null;
+            if ($url !== '') {
+                $existing_listing_id = $wpdb->get_var($wpdb->prepare(
+                    "SELECT id FROM `$tl` WHERE platform = %s AND listing_url = %s LIMIT 1",
+                    $platform, $url
+                ));
+            }
+
+            if ($existing_listing_id) {
+                $wpdb->update($tl, [
+                    'price'          => $price,
+                    'currency'       => $currency,
+                    'listing_status' => $status,
+                    'notes'          => $notes,
+                ], ['id' => $existing_listing_id]);
+                $stats['updated']++;
+                continue;
+            }
+
+            $product_id = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM `$tp` WHERE name = %s LIMIT 1", $title
+            ));
+            if (!$product_id) {
+                $wpdb->insert($tp, [
+                    'name'        => $title,
+                    'type'        => 'digital',
+                    'brand'       => 'LAKI',
+                    'status'      => 'active',
+                    'description' => 'Importert fra ' . $platform . '-CSV (' . date('Y-m-d') . ')',
+                ]);
+                $product_id = (int) $wpdb->insert_id;
+                $stats['new_products']++;
+            }
+
+            $wpdb->insert($tl, [
+                'product_id'     => (int) $product_id,
+                'platform'       => $platform,
+                'listing_url'    => $url,
+                'price'          => $price,
+                'currency'       => $currency,
+                'listing_status' => $status,
+                'notes'          => $notes,
+            ]);
+            $stats['new_listings']++;
+        }
+        return ['ok' => true, 'stats' => $stats];
+    }
+
+    public static function ajax_import_csv(): void {
+        check_ajax_referer('edifice_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Ikke tillatt');
+        $csv      = wp_unslash($_POST['csv'] ?? '');
+        $platform = sanitize_text_field($_POST['platform'] ?? 'Etsy');
+        if (!$csv) wp_send_json_error('Tom CSV');
+        wp_send_json_success(self::import_listings_csv($csv, $platform));
+    }
 }

@@ -190,6 +190,7 @@ $channel_config = [
         <div class="edi-action-bar" style="margin:0;">
             <button class="edi-btn edi-btn-secondary" id="btn-add-product">+ Nytt produkt</button>
             <button class="edi-btn edi-btn-primary"   id="btn-add-listing">+ Ny listing</button>
+            <button class="edi-btn edi-btn-secondary" id="btn-import-csv" title="Importer listings fra CSV (Etsy m.fl. uten API)">📥 Importer CSV</button>
             <button class="edi-btn edi-btn-secondary" id="btn-sync-gumroad" title="Synk Gumroad-inntekter">🔄 Gumroad-sync</button>
         </div>
     </div>
@@ -408,6 +409,36 @@ $channel_config = [
         <div class="edi-modal-actions">
             <button class="edi-btn edi-btn-secondary" onclick="ediCloseModal('modal-revenue')">Avbryt</button>
             <button class="edi-btn edi-btn-primary" onclick="ediSaveRevenue()">Lagre</button>
+        </div>
+    </div>
+</div>
+
+<!-- CSV-IMPORT MODAL -->
+<div class="edi-modal-overlay" id="modal-import-csv">
+    <div class="edi-modal" style="max-width:680px">
+        <h2 style="margin-top:0">📥 Importer listings fra CSV</h2>
+        <p style="font-size:13px;color:#64748b;margin:0 0 16px">
+            Brukes når plattformen ikke har API (typisk Etsy). Eksporter listings fra plattformen, lim inn CSV her.
+            Påkrevd kolonne: <code>Title</code> (eller Name / Listing Title). Valgfrie: <code>URL</code>, <code>Price</code>, <code>Currency</code>, <code>Status</code>, <code>Notes</code>.
+        </p>
+        <label>Plattform</label>
+        <select id="import-csv-platform">
+            <option value="Etsy">Etsy</option>
+            <option value="Gumroad">Gumroad</option>
+            <option value="PromptBase">PromptBase</option>
+            <option value="KDP">KDP</option>
+            <option value="Upwork">Upwork</option>
+            <option value="Other">Annet</option>
+        </select>
+        <label style="margin-top:12px">CSV (med header-rad)</label>
+        <textarea id="import-csv-text" rows="10" style="font-family:monospace;font-size:12px"
+                  placeholder="Title,URL,Price,Currency
+Foo Product,https://etsy.com/listing/123,29.99,USD
+Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
+        <div id="import-csv-result" style="margin-top:10px"></div>
+        <div class="edi-modal-actions">
+            <button class="edi-btn edi-btn-secondary" onclick="ediCloseModal('modal-import-csv')">Avbryt</button>
+            <button class="edi-btn edi-btn-primary" id="btn-run-import-csv">Kjør import</button>
         </div>
     </div>
 </div>
@@ -639,6 +670,33 @@ $channel_config = [
             }
         });
     };
+
+    // CSV-import modal
+    document.getElementById('btn-import-csv').addEventListener('click', function() {
+        document.getElementById('modal-import-csv').classList.add('active');
+    });
+    document.getElementById('btn-run-import-csv')?.addEventListener('click', function() {
+        const btn = this;
+        const csv = document.getElementById('import-csv-text').value.trim();
+        const platform = document.getElementById('import-csv-platform').value;
+        if (!csv) { alert('Tom CSV — lim inn data først.'); return; }
+        btn.disabled = true;
+        btn.textContent = '⏳ Importerer…';
+        ajax('edifice_listings_import_csv', { csv: csv, platform: platform }, function(data) {
+            btn.disabled = false;
+            btn.textContent = 'Kjør import';
+            const out = document.getElementById('import-csv-result');
+            if (data.ok) {
+                const s = data.stats;
+                out.innerHTML = `<div style="padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px">
+                    ✅ Ferdig — ${s.new_listings} nye listings, ${s.new_products} nye produkter, ${s.updated} oppdatert, ${s.errors} feil (${s.rows} rader totalt).
+                </div>`;
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                out.innerHTML = `<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:13px">❌ ${data.error || 'ukjent feil'}</div>`;
+            }
+        });
+    });
 
     // Gumroad sync
     document.getElementById('btn-sync-gumroad').addEventListener('click', function() {
