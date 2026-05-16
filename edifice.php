@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.8.1'); // hosting: Kuma via /metrics (Prometheus) — /api/monitors finnes ikke i 1.x
+define('EDIFICE_VERSION', '1.9.0'); // unimicro: webhook-mottaker for DNBregnskap fakturasynk
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -28,6 +28,7 @@ require_once EDIFICE_DIR . 'includes/class-interactions.php';
 require_once EDIFICE_DIR . 'includes/class-sync-imessage.php';
 require_once EDIFICE_DIR . 'includes/class-etsy.php';
 require_once EDIFICE_DIR . 'includes/class-hosting.php';
+require_once EDIFICE_DIR . 'includes/class-unimicro.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
 
@@ -46,6 +47,7 @@ add_action('plugins_loaded', function () {
     Edifice_Interactions::init();
     Edifice_Sync_iMessage::init();
     Edifice_Hosting::init();
+    Edifice_Unimicro::init();
     Edifice_Admin::init();
     Edifice_Frontend::init();
 });

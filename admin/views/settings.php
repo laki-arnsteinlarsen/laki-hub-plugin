@@ -92,6 +92,13 @@ if (!empty($_POST['_edifice_hosting_save'])) {
     echo '<div class="notice notice-success"><p>Hosting-innstillinger lagret. Cache tømt.</p></div>';
 }
 
+// Handle UniMicro signing-key save
+if (!empty($_POST['_edifice_unimicro_save'])) {
+    check_admin_referer('edifice_unimicro_settings');
+    update_option(Edifice_Unimicro::OPT_SIGNING_KEY, sanitize_text_field($_POST['unimicro_signing_key'] ?? ''));
+    echo '<div class="notice notice-success"><p>UniMicro signing key lagret.</p></div>';
+}
+
 
 // Save credentials
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['edifice_gmail_save'])) {
@@ -288,6 +295,66 @@ $auth_url  = Edifice_Gmail::get_auth_url();
           </span>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- UniMicro / DNBregnskap card -->
+  <?php
+    $unimicro_key       = (string) get_option(Edifice_Unimicro::OPT_SIGNING_KEY, '');
+    $unimicro_endpoint  = rest_url('edifice/v1/webhook/unimicro');
+    $unimicro_connected = $unimicro_key !== '';
+  ?>
+  <div class="lh-card" style="margin-top:24px">
+    <div class="lh-card-head">
+      <h2>📥 UniMicro / DNBregnskap</h2>
+      <span class="lh-badge <?= $unimicro_connected ? 'lh-badge-green' : 'lh-badge-gray' ?>">
+        <?= $unimicro_connected ? 'Konfigurert' : 'Ikke konfigurert' ?>
+      </span>
+    </div>
+    <div class="lh-card-body">
+      <p style="font-size:13px;color:var(--lh-muted);margin:0 0 20px">
+        Mottar webhook-pushes fra DNBregnskap når CustomerInvoice opprettes, oppdateres eller betales.
+        Fakturaer dukker opp i <strong>Inntekt</strong>-modulen automatisk.
+      </p>
+
+      <form method="post" action="">
+        <?php wp_nonce_field('edifice_unimicro_settings'); ?>
+        <input type="hidden" name="_edifice_unimicro_save" value="1">
+
+        <div class="lh-form-grid" style="max-width:720px">
+          <div class="lh-form-row">
+            <label>Webhook-endepunkt (kopier til UniMicro-eventplan)</label>
+            <input type="text" readonly
+                   value="<?= esc_attr($unimicro_endpoint) ?>"
+                   style="font-family:monospace;font-size:12px;background:#f8fafc">
+          </div>
+          <div class="lh-form-row">
+            <label>UniMicro Signing Key</label>
+            <input type="password" name="unimicro_signing_key"
+                   value="<?= esc_attr($unimicro_key) ?>"
+                   placeholder="••••••••"
+                   autocomplete="new-password">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-top:16px">
+          <button type="submit" class="lh-btn lh-btn-primary">Lagre signing key</button>
+          <span style="font-size:11px;color:var(--lh-muted)">
+            Brukes til å verifisere HMAC-SHA256-signaturen i <code>Unimicro-Signature</code>-headeren.
+          </span>
+        </div>
+      </form>
+
+      <div style="margin-top:24px;padding:18px 20px;background:#f8fafc;border:1px solid var(--lh-border);border-radius:10px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--lh-muted);margin-bottom:10px">
+          Oppsett i DNBregnskap
+        </div>
+        <ol style="margin:0;padding-left:20px;font-size:13px;line-height:1.8;color:var(--lh-text)">
+          <li>Generer en tilfeldig signing key (f.eks. 48 tegn) — bruk samme verdi her og i UniMicro</li>
+          <li>POST til <code>/api/biz/eventplans</code> hos UniMicro med <code>ModelFilter=CustomerInvoice</code>, <code>OperationFilter=CUD</code> og endepunktet over</li>
+          <li>Test ved å opprette et utkast i DNBregnskap — fakturaen skal dukke opp i Inntekt-modulen umiddelbart</li>
+        </ol>
+      </div>
     </div>
   </div>
 
