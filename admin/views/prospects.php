@@ -177,14 +177,17 @@ $counts    = Edifice_Prospects::counts();
 </div>
 
 <style>
-/* Sorterbare kolonneoverskrifter */
+/* Sorterbare kolonneoverskrifter — overstyrer .lh-table th sin hvite tekst med
+   semi-transparent for inaktive kolonner, full hvit for aktiv. */
 #prospects-table.lh-sortable thead th[data-sort-key] {
   position: relative;
   padding-right: 18px;
-  transition: color .15s;
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition);
 }
 #prospects-table.lh-sortable thead th[data-sort-key]:hover {
-  color: #1e3a5f;
+  color: var(--gold-300);
 }
 #prospects-table.lh-sortable thead th[data-sort-key]::after {
   content: '↕';
@@ -192,12 +195,14 @@ $counts    = Edifice_Prospects::counts();
   right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  opacity: .25;
+  opacity: .35;
   font-size: 11px;
 }
+#prospects-table.lh-sortable thead th.lh-sort-active {
+  color: var(--gold-300);
+}
 #prospects-table.lh-sortable thead th.lh-sort-active::after {
-  opacity: .9;
-  color: #1e3a5f;
+  opacity: 1;
 }
 #prospects-table.lh-sortable thead th.lh-sort-asc::after  { content: '▲' }
 #prospects-table.lh-sortable thead th.lh-sort-desc::after { content: '▼' }
@@ -372,18 +377,18 @@ $counts    = Edifice_Prospects::counts();
     // Score-utregning
     const bd = scoreBreakdown(d);
     html += '<div class="lh-view-section-title" style="margin-top:14px">📊 Score-utregning</div>';
-    html += '<div style="background:#f8fafc;border:1px solid var(--lh-border);border-radius:8px;padding:12px;margin-top:6px;grid-column:1/-1">';
+    html += '<div style="background:var(--neutral-50);border:1px solid var(--lh-border);border-radius:8px;padding:12px;margin-top:6px;grid-column:1/-1">';
     html += '<table style="width:100%;font-size:13px;border-collapse:collapse">';
     bd.lines.forEach(line => {
-      const dim = (line.points > 0 ? '#1e293b' : '#94a3b8');
+      const dim = line.points > 0 ? 'var(--lh-text)' : 'var(--lh-muted)';
       const pts = line.points > 0
-        ? `<strong style="color:#16a34a">+${line.points}</strong>`
-        : '<span style="color:#94a3b8">0</span>';
-      html += `<tr style="border-bottom:1px solid #e2e8f0">
+        ? `<strong style="color:var(--color-success)">+${line.points}</strong>`
+        : '<span style="color:var(--lh-muted)">0</span>';
+      html += `<tr style="border-bottom:1px solid var(--lh-border)">
         <td style="padding:6px 4px;color:${dim};width:35%">${escHtml(line.label)}</td>
         <td style="padding:6px 4px;color:${dim}">${escHtml(line.value)}</td>
         <td style="padding:6px 4px;text-align:right;width:60px">${pts}</td>
-        <td style="padding:6px 4px;color:#94a3b8;font-size:11px;font-style:italic">${escHtml(line.note)}</td>
+        <td style="padding:6px 4px;color:var(--lh-muted);font-size:11px;font-style:italic">${escHtml(line.note)}</td>
       </tr>`;
     });
     html += `<tr>
@@ -391,11 +396,11 @@ $counts    = Edifice_Prospects::counts();
       <td style="padding:8px 4px;text-align:right;font-weight:700;font-size:15px">
         <span class="lh-badge lh-badge-${scoreCls}">${bd.total}</span>
       </td>
-      <td style="padding:8px 4px;color:#94a3b8;font-size:11px">av maks ${bd.max}</td>
+      <td style="padding:8px 4px;color:var(--lh-muted);font-size:11px">av maks ${bd.max}</td>
     </tr>`;
     html += '</table>';
     if (bd.total !== score) {
-      html += `<div style="margin-top:8px;font-size:11px;color:#dc2626">
+      html += `<div style="margin-top:8px;font-size:11px;color:var(--color-error)">
         ⚠️ Lagret score (${score}) avviker fra beregnet (${bd.total}) — kjør re-skann for å oppdatere.
       </div>`;
     }
@@ -461,7 +466,7 @@ $counts    = Edifice_Prospects::counts();
       result.style.display = '';
       document.getElementById('prospect-import-close').disabled = false;
       if (!r.success) {
-        result.innerHTML = `<div style="color:#dc2626;padding:16px">Feilet: ${r.data || 'ukjent'}</div>`;
+        result.innerHTML = `<div style="color:var(--color-error);padding:16px">Feilet: ${r.data || 'ukjent'}</div>`;
         return;
       }
       const s = r.data || {};
@@ -471,7 +476,7 @@ $counts    = Edifice_Prospects::counts();
           <div style="font-weight:600;font-size:15px;margin-bottom:14px">Import ferdig</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;text-align:left;max-width:300px;margin:0 auto">
             <div>Hentet fra Brreg:</div><div><strong>${s.fetched || 0}</strong></div>
-            <div>Nye prospekter lagret:</div><div><strong style="color:#16a34a">${s.imported || 0}</strong></div>
+            <div>Nye prospekter lagret:</div><div><strong style="color:var(--color-success)">${s.imported || 0}</strong></div>
             <div>Eksisterte fra før:</div><div>${s.skipped_existing || 0}</div>
             <div>Utenfor geografi-filter:</div><div>${s.skipped_geo || 0}</div>
             <div>Feil:</div><div>${s.errors || 0}</div>
@@ -484,7 +489,7 @@ $counts    = Edifice_Prospects::counts();
       document.getElementById('prospect-import-close').disabled = false;
       document.getElementById('prospect-import-result').style.display = '';
       document.getElementById('prospect-import-result').innerHTML =
-        '<div style="color:#dc2626;padding:16px">Nettverksfeil under import</div>';
+        '<div style="color:var(--color-error);padding:16px">Nettverksfeil under import</div>';
     });
   });
 

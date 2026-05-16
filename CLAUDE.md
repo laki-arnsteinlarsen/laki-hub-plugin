@@ -115,7 +115,7 @@ edifice/
 | `edifice_prospects` | Brreg-prospekter med advisory-scoring |
 | `edifice_sites` | Hosting: siter på Hetzner med Kuma/UR-monitor-IDer + månedskost |
 
-Nåværende versjon: **1.9.6** — UniMicro/DNBregnskap webhook-mottaker + netto/MVA-visning i Inntekt.
+Nåværende versjon: **1.9.7** — products + crm + prospects flyttet over på LAKI Designsystem v2.0 (`.lh-*`-klasser).
 Siste migrasjonsnummer: **19**.
 
 ---
@@ -369,11 +369,18 @@ Jobb: Webhook → URL + Privat nøkkel**. Bytt aldri URL-en uten å bumpe `?v=`.
 
 ## UI-designtokens
 
+LAKI Designsystem v2.0 (mai 2026) — full palett ligger i `:root` på `assets/css/admin.css`.
+Eldre `--lh-*`-aliaser beholdt for bakoverkompatibilitet.
+
 | Token | Verdi |
 |-------|-------|
-| Sidebar bakgrunn | `#1e293b` |
-| Logo-felt (øverst i sidebar) | `#3d5268` |
-| Aksent | `#C9A84C` (gull) |
+| Sidebar bakgrunn | `#1E3A5F` (navy-800) |
+| Logo-felt (øverst i sidebar) | `#162D4A` (mørkere navy) |
+| Bakgrunn (app) | `#F9F7F4` (krem / neutral-50) |
+| Primær | `#1E3A5F` (navy-800) |
+| Aksent | `#C9A84C` (gold-500) |
+| Heading-font | Playfair Display |
+| Body-font | Inter |
 
 ---
 

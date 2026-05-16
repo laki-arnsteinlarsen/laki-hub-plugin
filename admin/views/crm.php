@@ -337,10 +337,10 @@ $n_persons   = count($contacts) - $n_companies;
 </div>
 
 <style>
-/* Hele raden er klikkbar — viser cursor + hover-effekt */
+/* Hele raden er klikkbar — viser cursor + hover-effekt
+   (.lh-table tr:hover gir allerede navy-50; her bare cursor + sterkere navn) */
 .lh-clickable-row { cursor: pointer; }
-.lh-clickable-row:hover { background: #f8fafc; }
-.lh-clickable-row:hover td:first-child strong { color: #1e3a5f; }
+.lh-clickable-row:hover td:first-child strong { color: var(--navy-800); }
 
 /* Sosiale URL-ikoner i view-modal — kompakte 32×32 SVG-knapper */
 .lh-social-icons { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px }
@@ -348,23 +348,23 @@ $n_persons   = count($contacts) - $n_companies;
   width:32px; height:32px;
   display:inline-flex; align-items:center; justify-content:center;
   border-radius:7px;
-  background:#f1f5f9;
-  color:#475569;
+  background: var(--neutral-100);
+  color: var(--neutral-600);
   text-decoration:none;
-  border:1px solid #e2e8f0;
-  transition:background .15s, color .15s, border-color .15s, transform .1s;
+  border:1px solid var(--lh-border);
+  transition: background var(--transition), color var(--transition), border-color var(--transition), transform var(--transition);
 }
 .lh-social-icon svg { width:16px; height:16px; display:block }
 .lh-social-icon:hover {
-  background: var(--brand, #1e293b);
-  color:#ffffff;
-  border-color: var(--brand, #1e293b);
+  background: var(--brand, var(--navy-800));
+  color:#fff;
+  border-color: var(--brand, var(--navy-800));
 }
 .lh-social-icon:active { transform: scale(.96) }
 
 /* Drill-down: hele person-raden klikkbar */
-.lh-person-row.lh-clickable { cursor:pointer; transition:background .15s }
-.lh-person-row.lh-clickable:hover { background:#f1f5f9 }
+.lh-person-row.lh-clickable { cursor:pointer; transition: background var(--transition) }
+.lh-person-row.lh-clickable:hover { background: var(--navy-50) }
 </style>
 <script>
 /* ── Filter tabs ────────────────────────────────────────────────────────── */
@@ -471,9 +471,9 @@ function bindGeonorgeAutocomplete(input) {
   const dropdown = document.createElement('div');
   dropdown.className = 'lh-geonorge-results';
   dropdown.style.cssText = 'display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;'
-    + 'background:#fff;border:1px solid #e2e8f0;border-radius:8px;'
+    + 'background:#fff;border:1px solid var(--lh-border);border-radius:8px;'
     + 'max-height:280px;overflow-y:auto;z-index:9999;'
-    + 'box-shadow:0 8px 24px rgba(15,23,42,.08)';
+    + 'box-shadow:0 8px 24px rgba(30,58,95,.10)';
   wrapper.appendChild(dropdown);
 
   let timer;
@@ -490,9 +490,9 @@ function bindGeonorgeAutocomplete(input) {
     dropdown.innerHTML = items.map((a, i) => {
       const text = `${a.adressetekst}, ${a.postnummer} ${a.poststed}`;
       return `<div class="lh-geonorge-item" data-idx="${i}" data-text="${escapeHtml(text)}"
-        style="padding:10px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:13px">
+        style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--neutral-100);font-size:13px">
         <div style="font-weight:500">${escapeHtml(text)}</div>
-        <div style="font-size:11px;color:#94a3b8;margin-top:2px">${escapeHtml(a.kommunenavn || '')}</div>
+        <div style="font-size:11px;color:var(--lh-muted);margin-top:2px">${escapeHtml(a.kommunenavn || '')}</div>
       </div>`;
     }).join('');
     dropdown.style.display = 'block';
@@ -547,7 +547,7 @@ function bindGeonorgeAutocomplete(input) {
       return;
     }
     items.forEach((el, i) => {
-      el.style.background = i === activeIdx ? '#f1f5f9' : '';
+      el.style.background = i === activeIdx ? 'var(--navy-50)' : '';
     });
     items[activeIdx]?.scrollIntoView({ block: 'nearest' });
   });

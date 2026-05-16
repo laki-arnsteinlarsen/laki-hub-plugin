@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.9.6'); // revenue: NOK ink. mva som inline-suffix paa stat-tall
+define('EDIFICE_VERSION', '1.9.7'); // design v2.0: products + crm + prospects flyttet til .lh-*
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

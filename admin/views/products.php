@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 $totals   = Edifice_Products_Digital::get_totals();
 $channels = Edifice_Products_Digital::get_channels_summary();
 
-// Channel display config — order + icons + labels
+// Channel display config — order + icons + labels + accent color
 $channel_config = [
     'PromptBase' => ['icon' => '🤖', 'label' => 'PromptBase', 'color' => '#6366f1'],
     'Gumroad'    => ['icon' => '🛒', 'label' => 'Gumroad',    'color' => '#f59e0b'],
@@ -16,223 +16,149 @@ $channel_config = [
 ?>
 
 <style>
-/* ── Channel cards ── */
-.edi-channel-grid {
+/* ── Channel cards (kanal-spesifikk aksent på topp) ── */
+.lh-channel-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 18px;
-    margin-bottom: 32px;
+    gap: 16px;
+    margin-bottom: 28px;
 }
-.edi-channel-card {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
+.lh-channel-card {
+    background: var(--lh-surface);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius);
+    box-shadow: var(--lh-shadow);
     padding: 20px 22px 18px;
     cursor: pointer;
-    transition: box-shadow .15s, transform .1s;
+    transition: box-shadow var(--transition), transform var(--transition);
     position: relative;
     overflow: hidden;
 }
-.edi-channel-card:hover {
-    box-shadow: 0 6px 18px rgba(0,0,0,.1);
+.lh-channel-card:hover {
+    box-shadow: 0 6px 18px rgba(30,58,95,.12);
     transform: translateY(-2px);
 }
-.edi-channel-card::before {
+.lh-channel-card::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: 4px;
-    background: var(--ch-color, #64748b);
+    height: 3px;
+    background: var(--ch-color, var(--gold-500));
 }
-.edi-channel-card .ch-icon  { font-size: 28px; line-height: 1; margin-bottom: 10px; }
-.edi-channel-card .ch-label { font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
-.edi-channel-card .ch-stat-row { display: flex; justify-content: space-between; margin-top: 14px; gap: 8px; }
-.edi-channel-card .ch-stat { flex: 1; }
-.edi-channel-card .ch-stat .val { font-size: 20px; font-weight: 700; color: #1e293b; line-height: 1.1; }
-.edi-channel-card .ch-stat .lbl { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-.edi-channel-card .ch-listings-badge {
+.lh-channel-card .ch-icon  { font-size: 28px; line-height: 1; margin-bottom: 10px; }
+.lh-channel-card .ch-label {
+    font-size: 11px;
+    color: var(--lh-muted);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    font-weight: 600;
+}
+.lh-channel-card .ch-stat-row { display: flex; justify-content: space-between; margin-top: 14px; gap: 8px; }
+.lh-channel-card .ch-stat { flex: 1; }
+.lh-channel-card .ch-stat .val {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy-800);
+    line-height: 1.1;
+}
+.lh-channel-card .ch-stat .lbl { font-size: 11px; color: var(--lh-muted); margin-top: 2px; }
+.lh-channel-card .ch-listings-badge {
     display: inline-block;
-    background: #f1f5f9;
-    color: #475569;
+    background: var(--neutral-100);
+    color: var(--lh-muted);
     font-size: 11px;
     font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 20px;
+    padding: 2px 9px;
+    border-radius: 999px;
     margin-top: 12px;
 }
 
-/* ── Summary bar ── */
-.edi-summary-bar {
-    display: flex;
-    gap: 24px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 16px 24px;
-    margin-bottom: 28px;
-    flex-wrap: wrap;
-}
-.edi-summary-bar .sb-item { display: flex; flex-direction: column; }
-.edi-summary-bar .sb-val  { font-size: 22px; font-weight: 700; color: #1e293b; }
-.edi-summary-bar .sb-lbl  { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
-.edi-summary-bar .sb-divider { width: 1px; background: #e2e8f0; align-self: stretch; }
-
-/* ── Drill-down view ── */
+/* ── Drill-down: tilbake-knapp og header ── */
 #ch-detail-view { display: none; }
-.edi-back-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: none; border: none; cursor: pointer;
-    color: #3b82f6; font-size: 14px; font-weight: 600;
-    padding: 0; margin-bottom: 20px;
-}
-.edi-back-btn:hover { text-decoration: underline; }
-.edi-detail-header {
-    display: flex; align-items: center; gap: 14px;
-    margin-bottom: 22px;
-}
-.edi-detail-header .dh-icon  { font-size: 36px; }
-.edi-detail-header .dh-title { font-size: 22px; font-weight: 700; color: #1e293b; }
-.edi-detail-header .dh-sub   { font-size: 13px; color: #64748b; margin-top: 3px; }
-
-/* Listings table */
-.edi-table-wrap { overflow-x: auto; }
-.edi-table {
-    width: 100%; border-collapse: collapse;
+.lh-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--navy-800);
+    font-family: var(--font-body);
     font-size: 13px;
+    font-weight: 600;
+    padding: 0;
+    margin-bottom: 18px;
 }
-.edi-table th {
-    text-align: left; padding: 10px 14px;
-    background: #f8fafc; color: #64748b;
-    font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
-    border-bottom: 1px solid #e2e8f0;
-}
-.edi-table td {
-    padding: 11px 14px;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-    color: #1e293b;
-}
-.edi-table tr:last-child td { border-bottom: none; }
-.edi-table tr:hover td { background: #f8fafc; }
-.edi-status-badge {
-    display: inline-block;
-    padding: 2px 8px; border-radius: 20px;
-    font-size: 11px; font-weight: 600;
-}
-.status-live    { background: #dcfce7; color: #166534; }
-.status-pending { background: #fef9c3; color: #854d0e; }
-.status-other   { background: #f1f5f9; color: #475569; }
-.edi-link { color: #3b82f6; text-decoration: none; }
-.edi-link:hover { text-decoration: underline; }
-
-/* Add product/listing buttons */
-.edi-action-bar {
-    display: flex; gap: 10px;
+.lh-back-btn:hover { text-decoration: underline; }
+.lh-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
     margin-bottom: 22px;
-    flex-wrap: wrap;
 }
-.edi-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 16px; border-radius: 7px; font-size: 13px;
-    font-weight: 600; cursor: pointer; border: none; text-decoration: none;
-    transition: opacity .15s;
+.lh-detail-header .dh-icon { font-size: 36px; }
+.lh-detail-header .dh-title {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy-800);
 }
-.edi-btn:hover { opacity: .85; }
-.edi-btn-primary { background: #3b82f6; color: #fff; }
-.edi-btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.lh-detail-header .dh-sub { font-size: 13px; color: var(--lh-muted); margin-top: 3px; }
 
-/* Loading spinner */
-.edi-spinner { display: none; color: #64748b; font-size: 13px; padding: 30px 0; text-align: center; }
-
-/* Empty state */
-.edi-empty { text-align: center; padding: 48px 0; color: #94a3b8; font-size: 14px; }
-
-/* Modals (reused from original) */
-.edi-modal-overlay {
-    display:none; position:fixed; inset:0;
-    background:rgba(0,0,0,.45); z-index:9998;
-    align-items:center; justify-content:center;
-}
-.edi-modal-overlay.active { display:flex; }
-.edi-modal {
-    background:#fff; border-radius:10px; padding:28px 32px;
-    width:560px; max-width:95vw; max-height:90vh; overflow-y:auto;
-    position:relative; z-index:9999;
-}
-.edi-modal h3 { margin:0 0 20px; font-size:17px; color:#1e293b; }
-.edi-modal label { display:block; font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; }
-.edi-modal input, .edi-modal select, .edi-modal textarea {
-    width:100%; padding:8px 10px; border:1px solid #e2e8f0;
-    border-radius:6px; font-size:13px; margin-bottom:14px; box-sizing:border-box;
-}
-.edi-modal textarea { height:80px; resize:vertical; }
-.edi-modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
-.edi-modal-close {
-    position:absolute; top:14px; right:18px;
-    background:none; border:none; font-size:20px; cursor:pointer; color:#94a3b8;
-}
-.edi-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-
-/* Revenue section inside detail */
-.edi-revenue-section {
-    margin-top: 32px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 20px 22px;
-}
-.edi-revenue-section h3 { margin: 0 0 16px; font-size: 15px; color: #1e293b; }
+/* Loader + tom-state inne i drill-down */
+.lh-spinner { text-align: center; padding: 30px 0; color: var(--lh-muted); font-size: 13px; }
 </style>
 
-<div class="wrap" style="max-width:1100px;">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
-        <h1 style="margin:0; font-size:22px; color:#1e293b;">🛍️ Produkter &amp; Kanaler</h1>
-        <div class="edi-action-bar" style="margin:0;">
-            <button class="edi-btn edi-btn-secondary" id="btn-add-product">+ Nytt produkt</button>
-            <button class="edi-btn edi-btn-primary"   id="btn-add-listing">+ Ny listing</button>
-            <button class="edi-btn edi-btn-secondary" id="btn-import-csv" title="Importer listings fra CSV (Etsy m.fl. uten API)">📥 Importer CSV</button>
-            <button class="edi-btn edi-btn-secondary" id="btn-sync-gumroad" title="Synk Gumroad-inntekter">🔄 Gumroad-sync</button>
+<div class="lh-wrap">
+    <div class="lh-header">
+        <div>
+            <h1>Produkter &amp; kanaler</h1>
+            <div class="lh-subtitle">Digitale produkter på tvers av PromptBase, Gumroad, Etsy, KDP og Upwork</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="lh-btn lh-btn-secondary lh-btn-sm" id="btn-add-product">+ Nytt produkt</button>
+            <button class="lh-btn lh-btn-primary lh-btn-sm"   id="btn-add-listing">+ Ny listing</button>
+            <button class="lh-btn lh-btn-ghost lh-btn-sm"     id="btn-import-csv" title="Importer listings fra CSV (Etsy m.fl. uten API)">📥 Importer CSV</button>
+            <button class="lh-btn lh-btn-ghost lh-btn-sm"     id="btn-sync-gumroad" title="Synk Gumroad-inntekter">🔄 Gumroad-sync</button>
         </div>
     </div>
 
-    <!-- Summary bar -->
-    <div class="edi-summary-bar">
-        <div class="sb-item">
-            <span class="sb-val">$<?= number_format((float)$totals['all_time'], 2) ?></span>
-            <span class="sb-lbl">Total inntekt</span>
+    <!-- Stat-rad ── -->
+    <div class="lh-stats">
+        <div class="lh-stat">
+            <div class="lh-stat-label">Total inntekt</div>
+            <div class="lh-stat-value">$<?= number_format((float)$totals['all_time'], 2) ?></div>
         </div>
-        <div class="sb-divider"></div>
-        <div class="sb-item">
-            <span class="sb-val">$<?= number_format((float)$totals['month'], 2) ?></span>
-            <span class="sb-lbl">Denne måneden</span>
+        <div class="lh-stat">
+            <div class="lh-stat-label">Denne måneden</div>
+            <div class="lh-stat-value green">$<?= number_format((float)$totals['month'], 2) ?></div>
         </div>
-        <div class="sb-divider"></div>
-        <div class="sb-item">
-            <span class="sb-val">$<?= number_format((float)$totals['ytd'], 2) ?></span>
-            <span class="sb-lbl">Hittil i år</span>
+        <div class="lh-stat">
+            <div class="lh-stat-label">Hittil i år</div>
+            <div class="lh-stat-value">$<?= number_format((float)$totals['ytd'], 2) ?></div>
         </div>
-        <div class="sb-divider"></div>
-        <div class="sb-item">
-            <span class="sb-val"><?= (int)$totals['active_listings'] ?></span>
-            <span class="sb-lbl">Aktive listings</span>
+        <div class="lh-stat">
+            <div class="lh-stat-label">Aktive listings</div>
+            <div class="lh-stat-value"><?= (int)$totals['active_listings'] ?></div>
         </div>
-        <div class="sb-divider"></div>
-        <div class="sb-item">
-            <span class="sb-val"><?= (int)$totals['total_listings'] ?></span>
-            <span class="sb-lbl">Listings totalt</span>
+        <div class="lh-stat">
+            <div class="lh-stat-label">Listings totalt</div>
+            <div class="lh-stat-value"><?= (int)$totals['total_listings'] ?></div>
         </div>
     </div>
 
     <!-- Channel grid (top-level view) -->
     <div id="ch-list-view">
-        <div class="edi-channel-grid">
+        <div class="lh-channel-grid">
             <?php foreach ($channel_config as $platform => $cfg):
                 $ch    = $channels[$platform] ?? null;
                 $count = $ch ? (int)$ch['listing_count'] : 0;
                 $month = $ch ? (float)$ch['month_revenue'] : 0;
                 $total = $ch ? (float)$ch['total_revenue']  : 0;
+                $live  = $ch && isset($ch['live_count']) ? (int)$ch['live_count'] : 0;
             ?>
-            <div class="edi-channel-card"
+            <div class="lh-channel-card"
                  style="--ch-color: <?= esc_attr($cfg['color']) ?>;"
                  data-platform="<?= esc_attr($platform) ?>"
                  onclick="ediOpenChannel('<?= esc_js($platform) ?>', '<?= esc_js($cfg['icon']) ?>')">
@@ -248,7 +174,6 @@ $channel_config = [
                         <div class="lbl">Totalt</div>
                     </div>
                 </div>
-                <?php $live = isset($ch['live_count']) ? (int)$ch['live_count'] : 0; ?>
                 <span class="ch-listings-badge"><?= $live ?> aktive / <?= $count ?> totalt</span>
             </div>
             <?php endforeach; ?>
@@ -257,8 +182,8 @@ $channel_config = [
 
     <!-- Channel drill-down view -->
     <div id="ch-detail-view">
-        <button class="edi-back-btn" onclick="ediBackToChannels()">← Alle kanaler</button>
-        <div class="edi-detail-header">
+        <button class="lh-back-btn" onclick="ediBackToChannels()">← Alle kanaler</button>
+        <div class="lh-detail-header">
             <div class="dh-icon" id="ch-detail-icon"></div>
             <div>
                 <div class="dh-title" id="ch-detail-title"></div>
@@ -266,179 +191,214 @@ $channel_config = [
             </div>
         </div>
 
-        <div class="edi-spinner" id="ch-spinner">Laster listings…</div>
+        <div class="lh-spinner" id="ch-spinner" style="display:none">Laster listings…</div>
 
         <div id="ch-detail-content"></div>
     </div>
 </div>
 
 <!-- ── Modal: Add/Edit product ── -->
-<div class="edi-modal-overlay" id="modal-product">
-    <div class="edi-modal">
-        <button class="edi-modal-close" onclick="ediCloseModal('modal-product')">×</button>
-        <h3 id="modal-product-title">Nytt produkt</h3>
-        <input type="hidden" id="prod-id" value="">
-        <label>Produktnavn</label>
-        <input type="text" id="prod-name" placeholder="f.eks. The Direction Gap">
-        <div class="edi-row-2">
-            <div>
-                <label>Brand / nisje</label>
-                <input type="text" id="prod-brand" placeholder="f.eks. Direction Gap">
-            </div>
-            <div>
-                <label>Type</label>
-                <select id="prod-type">
-                    <option value="ebook">E-bok</option>
-                    <option value="prompt_pack">Prompt Pack</option>
-                    <option value="agent_skill">Agent Skill</option>
-                    <option value="template">Template</option>
-                    <option value="course">Kurs</option>
-                    <option value="other">Annet</option>
-                </select>
-            </div>
+<div class="lh-modal-overlay" id="modal-product">
+    <div class="lh-modal">
+        <div class="lh-modal-head">
+            <h3 id="modal-product-title">Nytt produkt</h3>
+            <button class="lh-modal-close" type="button" onclick="ediCloseModal('modal-product')">×</button>
         </div>
-        <label>Beskrivelse</label>
-        <textarea id="prod-description" placeholder="Kort beskrivelse…"></textarea>
-        <label>Status</label>
-        <select id="prod-status">
-            <option value="active">Aktiv</option>
-            <option value="draft">Utkast</option>
-            <option value="archived">Arkivert</option>
-        </select>
-        <div class="edi-modal-actions">
-            <button class="edi-btn edi-btn-secondary" onclick="ediCloseModal('modal-product')">Avbryt</button>
-            <button class="edi-btn edi-btn-primary" onclick="ediSaveProduct()">Lagre</button>
-        </div>
-    </div>
-</div>
-
-<!-- ── Modal: Add/Edit listing ── -->
-<div class="edi-modal-overlay" id="modal-listing">
-    <div class="edi-modal">
-        <button class="edi-modal-close" onclick="ediCloseModal('modal-listing')">×</button>
-        <h3 id="modal-listing-title">Ny listing</h3>
-        <input type="hidden" id="lst-id" value="">
-        <label>Produkt</label>
-        <select id="lst-product-id">
-            <option value="">Velg produkt…</option>
-            <?php
-            $all_products = Edifice_Products_Digital::get_all_products();
-            foreach ($all_products as $prod):
-            ?>
-            <option value="<?= (int)$prod['id'] ?>"><?= esc_html($prod['name']) ?></option>
-            <?php endforeach; ?>
-        </select>
-        <div class="edi-row-2">
-            <div>
-                <label>Plattform / kanal</label>
-                <select id="lst-platform">
-                    <option value="PromptBase">PromptBase</option>
-                    <option value="Gumroad">Gumroad</option>
-                    <option value="KDP">KDP</option>
-                    <option value="Upwork">Upwork</option>
-                    <option value="Etsy">Etsy</option>
-                    <option value="Other">Annet</option>
-                </select>
+        <div class="lh-modal-body">
+            <input type="hidden" id="prod-id" value="">
+            <div class="lh-form-row">
+                <label>Produktnavn</label>
+                <input type="text" id="prod-name" placeholder="f.eks. The Direction Gap">
             </div>
-            <div>
+            <div class="lh-form-grid">
+                <div class="lh-form-row">
+                    <label>Brand / nisje</label>
+                    <input type="text" id="prod-brand" placeholder="f.eks. Direction Gap">
+                </div>
+                <div class="lh-form-row">
+                    <label>Type</label>
+                    <select id="prod-type">
+                        <option value="ebook">E-bok</option>
+                        <option value="prompt_pack">Prompt Pack</option>
+                        <option value="agent_skill">Agent Skill</option>
+                        <option value="template">Template</option>
+                        <option value="course">Kurs</option>
+                        <option value="other">Annet</option>
+                    </select>
+                </div>
+            </div>
+            <div class="lh-form-row">
+                <label>Beskrivelse</label>
+                <textarea id="prod-description" placeholder="Kort beskrivelse…"></textarea>
+            </div>
+            <div class="lh-form-row">
                 <label>Status</label>
-                <select id="lst-status">
-                    <option value="live">Live</option>
-                    <option value="pending_review">Pending review</option>
+                <select id="prod-status">
+                    <option value="active">Aktiv</option>
                     <option value="draft">Utkast</option>
                     <option value="archived">Arkivert</option>
                 </select>
             </div>
         </div>
-        <label>Listing URL</label>
-        <input type="url" id="lst-url" placeholder="https://…">
-        <div class="edi-row-2">
-            <div>
-                <label>Pris (USD)</label>
-                <input type="number" id="lst-price" step="0.01" min="0" placeholder="0.00">
-            </div>
-            <div>
-                <label>Valuta</label>
-                <select id="lst-currency">
-                    <option value="USD">USD</option>
-                    <option value="NOK">NOK</option>
-                    <option value="EUR">EUR</option>
+        <div class="lh-modal-foot">
+            <button class="lh-btn lh-btn-secondary" type="button" onclick="ediCloseModal('modal-product')">Avbryt</button>
+            <button class="lh-btn lh-btn-primary" type="button" onclick="ediSaveProduct()">Lagre</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Add/Edit listing ── -->
+<div class="lh-modal-overlay" id="modal-listing">
+    <div class="lh-modal">
+        <div class="lh-modal-head">
+            <h3 id="modal-listing-title">Ny listing</h3>
+            <button class="lh-modal-close" type="button" onclick="ediCloseModal('modal-listing')">×</button>
+        </div>
+        <div class="lh-modal-body">
+            <input type="hidden" id="lst-id" value="">
+            <div class="lh-form-row">
+                <label>Produkt</label>
+                <select id="lst-product-id">
+                    <option value="">Velg produkt…</option>
+                    <?php
+                    $all_products = Edifice_Products_Digital::get_all_products();
+                    foreach ($all_products as $prod):
+                    ?>
+                    <option value="<?= (int)$prod['id'] ?>"><?= esc_html($prod['name']) ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
+            <div class="lh-form-grid">
+                <div class="lh-form-row">
+                    <label>Plattform / kanal</label>
+                    <select id="lst-platform">
+                        <option value="PromptBase">PromptBase</option>
+                        <option value="Gumroad">Gumroad</option>
+                        <option value="KDP">KDP</option>
+                        <option value="Upwork">Upwork</option>
+                        <option value="Etsy">Etsy</option>
+                        <option value="Other">Annet</option>
+                    </select>
+                </div>
+                <div class="lh-form-row">
+                    <label>Status</label>
+                    <select id="lst-status">
+                        <option value="live">Live</option>
+                        <option value="pending_review">Pending review</option>
+                        <option value="draft">Utkast</option>
+                        <option value="archived">Arkivert</option>
+                    </select>
+                </div>
+            </div>
+            <div class="lh-form-row">
+                <label>Listing URL</label>
+                <input type="url" id="lst-url" placeholder="https://…">
+            </div>
+            <div class="lh-form-grid">
+                <div class="lh-form-row">
+                    <label>Pris (USD)</label>
+                    <input type="number" id="lst-price" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div class="lh-form-row">
+                    <label>Valuta</label>
+                    <select id="lst-currency">
+                        <option value="USD">USD</option>
+                        <option value="NOK">NOK</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+            </div>
+            <div class="lh-form-row">
+                <label>Notater</label>
+                <textarea id="lst-notes" placeholder="Valgfritt…"></textarea>
+            </div>
         </div>
-        <label>Notater</label>
-        <textarea id="lst-notes" placeholder="Valgfritt…"></textarea>
-        <div class="edi-modal-actions">
-            <button class="edi-btn edi-btn-secondary" onclick="ediCloseModal('modal-listing')">Avbryt</button>
-            <button class="edi-btn edi-btn-primary" onclick="ediSaveListing()">Lagre</button>
+        <div class="lh-modal-foot">
+            <button class="lh-btn lh-btn-secondary" type="button" onclick="ediCloseModal('modal-listing')">Avbryt</button>
+            <button class="lh-btn lh-btn-primary" type="button" onclick="ediSaveListing()">Lagre</button>
         </div>
     </div>
 </div>
 
 <!-- ── Modal: Add revenue entry ── -->
-<div class="edi-modal-overlay" id="modal-revenue">
-    <div class="edi-modal">
-        <button class="edi-modal-close" onclick="ediCloseModal('modal-revenue')">×</button>
-        <h3>Legg til inntektsoppføring</h3>
-        <input type="hidden" id="rev-listing-id" value="">
-        <div class="edi-row-2">
-            <div>
-                <label>Dato</label>
-                <input type="date" id="rev-date" value="<?= date('Y-m-d') ?>">
+<div class="lh-modal-overlay" id="modal-revenue">
+    <div class="lh-modal">
+        <div class="lh-modal-head">
+            <h3>Legg til inntektsoppføring</h3>
+            <button class="lh-modal-close" type="button" onclick="ediCloseModal('modal-revenue')">×</button>
+        </div>
+        <div class="lh-modal-body">
+            <input type="hidden" id="rev-listing-id" value="">
+            <div class="lh-form-grid">
+                <div class="lh-form-row">
+                    <label>Dato</label>
+                    <input type="date" id="rev-date" value="<?= date('Y-m-d') ?>">
+                </div>
+                <div class="lh-form-row">
+                    <label>Inntekt (USD)</label>
+                    <input type="number" id="rev-revenue" step="0.01" min="0" placeholder="0.00">
+                </div>
             </div>
-            <div>
-                <label>Inntekt (USD)</label>
-                <input type="number" id="rev-revenue" step="0.01" min="0" placeholder="0.00">
+            <div class="lh-form-grid">
+                <div class="lh-form-row">
+                    <label>Antall salg</label>
+                    <input type="number" id="rev-sales" min="0" placeholder="0">
+                </div>
+                <div class="lh-form-row">
+                    <label>Valuta</label>
+                    <select id="rev-currency">
+                        <option value="USD">USD</option>
+                        <option value="NOK">NOK</option>
+                    </select>
+                </div>
+            </div>
+            <div class="lh-form-row">
+                <label>Notater</label>
+                <textarea id="rev-notes" placeholder="Valgfritt…"></textarea>
             </div>
         </div>
-        <div class="edi-row-2">
-            <div>
-                <label>Antall salg</label>
-                <input type="number" id="rev-sales" min="0" placeholder="0">
-            </div>
-            <div>
-                <label>Valuta</label>
-                <select id="rev-currency">
-                    <option value="USD">USD</option>
-                    <option value="NOK">NOK</option>
-                </select>
-            </div>
-        </div>
-        <label>Notater</label>
-        <textarea id="rev-notes" placeholder="Valgfritt…"></textarea>
-        <div class="edi-modal-actions">
-            <button class="edi-btn edi-btn-secondary" onclick="ediCloseModal('modal-revenue')">Avbryt</button>
-            <button class="edi-btn edi-btn-primary" onclick="ediSaveRevenue()">Lagre</button>
+        <div class="lh-modal-foot">
+            <button class="lh-btn lh-btn-secondary" type="button" onclick="ediCloseModal('modal-revenue')">Avbryt</button>
+            <button class="lh-btn lh-btn-primary" type="button" onclick="ediSaveRevenue()">Lagre</button>
         </div>
     </div>
 </div>
 
-<!-- CSV-IMPORT MODAL -->
-<div class="edi-modal-overlay" id="modal-import-csv">
-    <div class="edi-modal" style="max-width:680px">
-        <h2 style="margin-top:0">📥 Importer listings fra CSV</h2>
-        <p style="font-size:13px;color:#64748b;margin:0 0 16px">
-            Brukes når plattformen ikke har API (typisk Etsy). Eksporter listings fra plattformen, lim inn CSV her.
-            Påkrevd kolonne: <code>Title</code> (eller Name / Listing Title). Valgfrie: <code>URL</code>, <code>Price</code>, <code>Currency</code>, <code>Status</code>, <code>Notes</code>.
-        </p>
-        <label>Plattform</label>
-        <select id="import-csv-platform">
-            <option value="Etsy">Etsy</option>
-            <option value="Gumroad">Gumroad</option>
-            <option value="PromptBase">PromptBase</option>
-            <option value="KDP">KDP</option>
-            <option value="Upwork">Upwork</option>
-            <option value="Other">Annet</option>
-        </select>
-        <label style="margin-top:12px">CSV (med header-rad)</label>
-        <textarea id="import-csv-text" rows="10" style="font-family:monospace;font-size:12px"
-                  placeholder="Title,URL,Price,Currency
+<!-- ── Modal: CSV-import ── -->
+<div class="lh-modal-overlay" id="modal-import-csv">
+    <div class="lh-modal lh-modal-wide">
+        <div class="lh-modal-head">
+            <h3>📥 Importer listings fra CSV</h3>
+            <button class="lh-modal-close" type="button" onclick="ediCloseModal('modal-import-csv')">×</button>
+        </div>
+        <div class="lh-modal-body">
+            <p style="font-size:13px;color:var(--lh-muted);margin:0 0 16px">
+                Brukes når plattformen ikke har API (typisk Etsy). Eksporter listings fra plattformen, lim inn CSV her.
+                Påkrevd kolonne: <code>Title</code> (eller Name / Listing Title). Valgfrie: <code>URL</code>, <code>Price</code>, <code>Currency</code>, <code>Status</code>, <code>Notes</code>.
+            </p>
+            <div class="lh-form-row">
+                <label>Plattform</label>
+                <select id="import-csv-platform">
+                    <option value="Etsy">Etsy</option>
+                    <option value="Gumroad">Gumroad</option>
+                    <option value="PromptBase">PromptBase</option>
+                    <option value="KDP">KDP</option>
+                    <option value="Upwork">Upwork</option>
+                    <option value="Other">Annet</option>
+                </select>
+            </div>
+            <div class="lh-form-row">
+                <label>CSV (med header-rad)</label>
+                <textarea id="import-csv-text" rows="10" style="font-family:monospace;font-size:12px"
+                          placeholder="Title,URL,Price,Currency
 Foo Product,https://etsy.com/listing/123,29.99,USD
 Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
-        <div id="import-csv-result" style="margin-top:10px"></div>
-        <div class="edi-modal-actions">
-            <button class="edi-btn edi-btn-secondary" onclick="ediCloseModal('modal-import-csv')">Avbryt</button>
-            <button class="edi-btn edi-btn-primary" id="btn-run-import-csv">Kjør import</button>
+            </div>
+            <div id="import-csv-result"></div>
+        </div>
+        <div class="lh-modal-foot">
+            <button class="lh-btn lh-btn-secondary" type="button" onclick="ediCloseModal('modal-import-csv')">Avbryt</button>
+            <button class="lh-btn lh-btn-primary" type="button" id="btn-run-import-csv">Kjør import</button>
         </div>
     </div>
 </div>
@@ -461,14 +421,14 @@ Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
                     document.getElementById('ch-spinner').style.display = 'none';
                     const msg = res?.data?.message || action;
                     document.getElementById('ch-detail-content').innerHTML =
-                        '<div class="edi-empty">⚠️ Feil: ' + msg + '</div>';
+                        '<div class="lh-empty"><p>⚠️ Feil: ' + msg + '</p></div>';
                 }
             },
             error: function(xhr) {
                 document.getElementById('ch-spinner').style.display = 'none';
                 document.getElementById('ch-detail-content').innerHTML =
-                    '<div class="edi-empty">⚠️ AJAX-feil (' + xhr.status + '): ' +
-                    xhr.responseText.substring(0, 300) + '</div>';
+                    '<div class="lh-empty"><p>⚠️ AJAX-feil (' + xhr.status + '): ' +
+                    xhr.responseText.substring(0, 300) + '</p></div>';
             }
         });
     }
@@ -502,19 +462,20 @@ Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
 
         if (!listings.length) {
             document.getElementById('ch-detail-content').innerHTML =
-                '<div class="edi-empty">Ingen listings registrert for ' + platform + ' ennå.</div>';
+                '<div class="lh-empty"><p>Ingen listings registrert for ' + platform + ' ennå.</p></div>';
             return;
         }
 
         const statusBadge = (s) => {
-            const cls = s === 'live' ? 'status-live' : (s === 'pending_review' ? 'status-pending' : 'status-other');
+            const cls = s === 'live' ? 'lh-badge-green' : (s === 'pending_review' ? 'lh-badge-yellow' : 'lh-badge-gray');
             const label = { live: 'Live', pending_review: 'Pending', draft: 'Utkast', archived: 'Arkivert' }[s] || s;
-            return `<span class="edi-status-badge ${cls}">${label}</span>`;
+            return `<span class="lh-badge ${cls}">${label}</span>`;
         };
 
         let html = `
-        <div class="edi-table-wrap">
-        <table class="edi-table">
+        <div class="lh-card">
+        <div class="lh-table-wrap">
+        <table class="lh-table">
             <thead>
                 <tr>
                     <th>Produkt</th>
@@ -533,29 +494,29 @@ Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
             const monthRev = parseFloat(l.month_revenue || 0).toFixed(2);
             const totalRev = parseFloat(l.revenue_total || 0).toFixed(2);
             const urlCell  = l.listing_url
-                ? `<a class="edi-link" href="${l.listing_url}" target="_blank">${l.listing_url.replace(/^https?:\/\//, '').substring(0, 42)}…</a>`
-                : '<span style="color:#94a3b8">—</span>';
+                ? `<a href="${l.listing_url}" target="_blank" style="color:var(--navy-800)">${l.listing_url.replace(/^https?:\/\//, '').substring(0, 42)}…</a>`
+                : '<span style="color:var(--lh-muted)">—</span>';
 
             html += `
             <tr>
                 <td><strong>${escHtml(l.product_name || '—')}</strong><br>
-                    <span style="font-size:11px;color:#94a3b8">${escHtml(l.product_brand || '')}</span></td>
+                    <span style="font-size:11px;color:var(--lh-muted)">${escHtml(l.product_brand || '')}</span></td>
                 <td>${urlCell}</td>
                 <td>$${parseFloat(l.price || 0).toFixed(2)}</td>
                 <td>${statusBadge(l.listing_status)}</td>
                 <td>$${monthRev}</td>
                 <td>$${totalRev}</td>
-                <td style="font-size:11px;color:#94a3b8">${l.last_synced || '—'}</td>
-                <td>
-                    <button class="edi-btn edi-btn-secondary" style="padding:4px 10px;font-size:11px;"
+                <td style="font-size:11px;color:var(--lh-muted)">${l.last_synced || '—'}</td>
+                <td class="actions">
+                    <button class="lh-btn lh-btn-secondary lh-btn-sm"
                         onclick="ediEditListing(${JSON.stringify(l).split('"').join('&quot;')})">✏️</button>
-                    <button class="edi-btn edi-btn-secondary" style="padding:4px 10px;font-size:11px;"
+                    <button class="lh-btn lh-btn-secondary lh-btn-sm"
                         onclick="ediAddRevenue(${l.id})">＋$</button>
                 </td>
             </tr>`;
         });
 
-        html += `</tbody></table></div>`;
+        html += `</tbody></table></div></div>`;
         document.getElementById('ch-detail-content').innerHTML = html;
     }
 
@@ -565,10 +526,10 @@ Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
 
     // ── Modals ──
     window.ediCloseModal = function(id) {
-        document.getElementById(id).classList.remove('active');
+        document.getElementById(id).classList.remove('open');
     };
     function openModal(id) {
-        document.getElementById(id).classList.add('active');
+        document.getElementById(id).classList.add('open');
     }
 
     // Product modal
@@ -633,7 +594,6 @@ Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
         }, function() {
             ediCloseModal('modal-listing');
             if (currentPlatform) {
-                // Refresh current channel view
                 const icon = document.getElementById('ch-detail-icon').textContent;
                 ediOpenChannel(currentPlatform, icon);
             } else {
@@ -673,7 +633,7 @@ Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
 
     // CSV-import modal
     document.getElementById('btn-import-csv').addEventListener('click', function() {
-        document.getElementById('modal-import-csv').classList.add('active');
+        openModal('modal-import-csv');
     });
     document.getElementById('btn-run-import-csv')?.addEventListener('click', function() {
         const btn = this;
@@ -688,12 +648,12 @@ Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
             const out = document.getElementById('import-csv-result');
             if (data.ok) {
                 const s = data.stats;
-                out.innerHTML = `<div style="padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px">
+                out.innerHTML = `<div style="padding:12px;background:var(--color-success-bg);border:1px solid #bbf7d0;border-radius:8px;font-size:13px;color:var(--color-success-txt)">
                     ✅ Ferdig — ${s.new_listings} nye listings, ${s.new_products} nye produkter, ${s.updated} oppdatert, ${s.errors} feil (${s.rows} rader totalt).
                 </div>`;
                 setTimeout(() => location.reload(), 2000);
             } else {
-                out.innerHTML = `<div style="padding:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:13px">❌ ${data.error || 'ukjent feil'}</div>`;
+                out.innerHTML = `<div style="padding:12px;background:var(--color-error-bg);border:1px solid #fecaca;border-radius:8px;font-size:13px;color:var(--color-error-txt)">❌ ${data.error || 'ukjent feil'}</div>`;
             }
         });
     });
@@ -712,9 +672,9 @@ Bar Product,https://etsy.com/listing/456,19.99,USD"></textarea>
     });
 
     // Close modals on overlay click
-    document.querySelectorAll('.edi-modal-overlay').forEach(function(el) {
+    document.querySelectorAll('.lh-modal-overlay').forEach(function(el) {
         el.addEventListener('click', function(e) {
-            if (e.target === el) el.classList.remove('active');
+            if (e.target === el) el.classList.remove('open');
         });
     });
 
