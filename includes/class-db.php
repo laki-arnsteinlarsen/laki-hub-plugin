@@ -88,18 +88,21 @@ class Edifice_DB {
         ) $c;");
 
         dbDelta("CREATE TABLE {$wpdb->prefix}edifice_revenue (
-            id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            contact_id  BIGINT UNSIGNED DEFAULT NULL,
-            project_id  BIGINT UNSIGNED DEFAULT NULL,
-            type        ENUM('invoice','payment','recurring') NOT NULL DEFAULT 'invoice',
-            description VARCHAR(500) DEFAULT NULL,
-            amount      DECIMAL(12,2) NOT NULL DEFAULT 0,
-            currency    VARCHAR(3)   NOT NULL DEFAULT 'NOK',
-            date        DATE         NOT NULL,
-            due_date    DATE         DEFAULT NULL,
-            status      ENUM('draft','sent','paid','overdue') NOT NULL DEFAULT 'draft',
-            invoice_nr  VARCHAR(50)  DEFAULT NULL,
-            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+            id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            contact_id   BIGINT UNSIGNED DEFAULT NULL,
+            project_id   BIGINT UNSIGNED DEFAULT NULL,
+            type         ENUM('invoice','payment','recurring') NOT NULL DEFAULT 'invoice',
+            description  VARCHAR(500) DEFAULT NULL,
+            amount       DECIMAL(12,2) NOT NULL DEFAULT 0,
+            currency     VARCHAR(3)   NOT NULL DEFAULT 'NOK',
+            date         DATE         NOT NULL,
+            due_date     DATE         DEFAULT NULL,
+            status       ENUM('draft','sent','paid','overdue') NOT NULL DEFAULT 'draft',
+            invoice_nr   VARCHAR(50)  DEFAULT NULL,
+            external_id  VARCHAR(100) DEFAULT NULL,
+            unimicro_raw LONGTEXT     DEFAULT NULL,
+            created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_external_id (external_id)
         ) $c;");
 
         dbDelta("CREATE TABLE {$wpdb->prefix}edifice_products (
@@ -556,6 +559,28 @@ class Edifice_DB {
                 updated_at             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_active (active)
             ) $c;");
+        }
+
+        // ── Migration 18: UniMicro webhook-felter på edifice_revenue ───────────
+        $revenue_table = $wpdb->prefix . 'edifice_revenue';
+        $rev_cols = $wpdb->get_results($wpdb->prepare(
+            "SELECT COLUMN_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s",
+            DB_NAME, $revenue_table
+        ), OBJECT_K);
+        if (! empty($rev_cols)) {
+            if (! isset($rev_cols['external_id'])) {
+                $wpdb->query("ALTER TABLE `$revenue_table`
+                              ADD COLUMN `external_id` VARCHAR(100) DEFAULT NULL AFTER `invoice_nr`");
+            }
+            if (! isset($rev_cols['unimicro_raw'])) {
+                $wpdb->query("ALTER TABLE `$revenue_table`
+                              ADD COLUMN `unimicro_raw` LONGTEXT DEFAULT NULL AFTER `external_id`");
+            }
+            $idx = $wpdb->get_var("SHOW INDEX FROM `$revenue_table` WHERE Key_name = 'idx_external_id'");
+            if (! $idx) {
+                $wpdb->query("ALTER TABLE `$revenue_table` ADD INDEX `idx_external_id` (`external_id`)");
+            }
         }
 
         // Seed initielle siter ved første gangs aktivering. Idempotent via flagg.
