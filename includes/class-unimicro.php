@@ -51,6 +51,12 @@ class Edifice_Unimicro {
         $verify = self::verify_signature($signature, $raw_body);
         if (! $verify['ok']) {
             error_log('[Edifice UniMicro] Signaturverifisering feilet: ' . $verify['reason']);
+            // DEBUG (kan fjernes naar UniMicro-signering er bekreftet): logg
+            // headers + body slik at vi ser hva UniMicro faktisk sender.
+            if ($verify['reason'] === 'missing_signature' || $verify['reason'] === 'signature_mismatch') {
+                error_log('[Edifice UniMicro DEBUG] Headers: ' . wp_json_encode($request->get_headers()));
+                error_log('[Edifice UniMicro DEBUG] Body (first 800 chars): ' . substr($raw_body, 0, 800));
+            }
             return new WP_REST_Response(['error' => $verify['reason']], 401);
         }
 
