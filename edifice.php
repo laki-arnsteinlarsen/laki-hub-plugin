@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.8.0'); // hosting-modul fase 1: drift+kostnad (Kuma + UptimeRobot)
+define('EDIFICE_VERSION', '1.8.1'); // hosting: Kuma via /metrics (Prometheus) — /api/monitors finnes ikke i 1.x
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 

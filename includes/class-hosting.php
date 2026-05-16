@@ -239,41 +239,52 @@ class Edifice_Hosting {
     /**
      * Henter alle monitorer fra Uptime Kuma indeksert på monitor-ID.
      * Returnerer null hvis API ikke er konfigurert eller kallet feiler.
+     *
+     * Kuma 1.x har ingen /api/monitors REST-endepunkt — det publiserte API-et
+     * er /metrics (Prometheus-format) med HTTP Basic auth (tom username, API-
+     * nøkkel som passord). Vi parser linjene for monitor_status og
+     * monitor_response_time. Oppetid 24h/30d er ikke eksponert via /metrics,
+     * så uptime-feltene settes til null (UptimeRobot fyller den kolonnen i UI).
      */
     private static function fetch_kuma_monitors(): ?array {
         $base = rtrim((string) get_option('edifice_kuma_base_url', ''), '/');
         $key  = (string) get_option('edifice_kuma_api_key', '');
         if (! $base || ! $key) return null;
 
-        $url = $base . '/api/monitors';
-        $resp = wp_remote_get($url, [
-            'headers' => ['Authorization' => 'Bearer ' . $key],
+        $resp = wp_remote_get($base . '/metrics', [
+            'headers' => ['Authorization' => 'Basic ' . base64_encode(':' . $key)],
             'timeout' => 8,
         ]);
         if (is_wp_error($resp)) return null;
-        $code = wp_remote_retrieve_response_code($resp);
-        if ($code !== 200) return null;
+        if (wp_remote_retrieve_response_code($resp) !== 200) return null;
 
-        $body = json_decode(wp_remote_retrieve_body($resp), true);
-        if (! is_array($body)) return null;
-
-        // Kuma kan returnere enten array eller {monitors: [...]} — håndter begge.
-        $monitors = $body['monitors'] ?? $body;
-        if (! is_array($monitors)) return null;
+        $body = wp_remote_retrieve_body($resp);
+        if (! is_string($body) || $body === '') return null;
 
         $out = [];
-        foreach ($monitors as $m) {
-            if (! isset($m['id'])) continue;
-            $id = (int) $m['id'];
-            $latest = $m['latestHeartbeat'] ?? [];
-            $out[$id] = [
-                'status'      => self::kuma_status_label($m['status'] ?? null),
-                'uptime_24h'  => isset($m['uptime']['24'])  ? round((float) $m['uptime']['24']  * 100, 2) : null,
-                'uptime_30d'  => isset($m['uptime']['720']) ? round((float) $m['uptime']['720'] * 100, 2) : null,
-                'response_ms' => isset($m['avgPing']) ? (int) $m['avgPing']
-                                : (isset($latest['ping']) ? (int) $latest['ping'] : null),
-                'last_check'  => $latest['time'] ?? null,
-            ];
+        foreach (explode("\n", $body) as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#') continue;
+            if (! preg_match('/^(monitor_status|monitor_response_time)\{([^}]+)\}\s+(\S+)/', $line, $m)) continue;
+            if (! preg_match('/monitor_id="(\d+)"/', $m[2], $idm)) continue;
+
+            $id = (int) $idm[1];
+            if (! isset($out[$id])) {
+                $out[$id] = [
+                    'status'      => 'unknown',
+                    'uptime_24h'  => null,
+                    'uptime_30d'  => null,
+                    'response_ms' => null,
+                    'last_check'  => null,
+                ];
+            }
+
+            if ($m[1] === 'monitor_status') {
+                $out[$id]['status'] = self::kuma_status_label((int) $m[3]);
+            } elseif ($m[1] === 'monitor_response_time') {
+                $val = (float) $m[3]; // -1 når nede, NaN i sjeldne tilfeller
+                $out[$id]['response_ms'] = ($val >= 0 && is_finite($val)) ? (int) round($val) : null;
+            }
         }
         return $out;
     }
