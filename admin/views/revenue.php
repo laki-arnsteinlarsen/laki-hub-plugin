@@ -19,23 +19,23 @@ $status_map = [
   <div class="lh-stats">
     <div class="lh-stat">
       <div class="lh-stat-label">Fakturert YTD</div>
-      <div class="lh-stat-value"><?= number_format($totals['invoiced_ytd'], 0, ',', ' ') ?></div>
-      <div class="lh-stat-sub">NOK ink. mva · <?= number_format($totals['invoiced_ytd_ex_vat'], 0, ',', ' ') ?> eks. mva</div>
+      <div class="lh-stat-value"><?= number_format($totals['invoiced_ytd'], 0, ',', ' ') ?><span style="font-size:.45em;font-weight:500;color:var(--lh-muted);margin-left:6px">NOK ink. mva</span></div>
+      <div class="lh-stat-sub"><?= number_format($totals['invoiced_ytd_ex_vat'], 0, ',', ' ') ?> eks. mva</div>
     </div>
     <div class="lh-stat">
       <div class="lh-stat-label">Betalt YTD</div>
-      <div class="lh-stat-value green"><?= number_format($totals['paid_ytd'], 0, ',', ' ') ?></div>
-      <div class="lh-stat-sub">NOK ink. mva · <?= number_format($totals['paid_ytd_ex_vat'], 0, ',', ' ') ?> eks. mva</div>
+      <div class="lh-stat-value green"><?= number_format($totals['paid_ytd'], 0, ',', ' ') ?><span style="font-size:.45em;font-weight:500;color:var(--lh-muted);margin-left:6px">NOK ink. mva</span></div>
+      <div class="lh-stat-sub"><?= number_format($totals['paid_ytd_ex_vat'], 0, ',', ' ') ?> eks. mva</div>
     </div>
     <div class="lh-stat">
       <div class="lh-stat-label">Forfalte</div>
-      <div class="lh-stat-value <?= $totals['overdue'] > 0 ? 'red' : '' ?>"><?= number_format($totals['overdue'], 0, ',', ' ') ?></div>
-      <div class="lh-stat-sub">NOK ink. mva · <?= number_format($totals['overdue_ex_vat'], 0, ',', ' ') ?> eks. mva</div>
+      <div class="lh-stat-value <?= $totals['overdue'] > 0 ? 'red' : '' ?>"><?= number_format($totals['overdue'], 0, ',', ' ') ?><span style="font-size:.45em;font-weight:500;color:var(--lh-muted);margin-left:6px">NOK ink. mva</span></div>
+      <div class="lh-stat-sub"><?= number_format($totals['overdue_ex_vat'], 0, ',', ' ') ?> eks. mva</div>
     </div>
     <div class="lh-stat">
       <div class="lh-stat-label">Pipeline (utkast)</div>
-      <div class="lh-stat-value yellow"><?= number_format($totals['pipeline'], 0, ',', ' ') ?></div>
-      <div class="lh-stat-sub">NOK ink. mva · <?= number_format($totals['pipeline_ex_vat'], 0, ',', ' ') ?> eks. mva</div>
+      <div class="lh-stat-value yellow"><?= number_format($totals['pipeline'], 0, ',', ' ') ?><span style="font-size:.45em;font-weight:500;color:var(--lh-muted);margin-left:6px">NOK ink. mva</span></div>
+      <div class="lh-stat-sub"><?= number_format($totals['pipeline_ex_vat'], 0, ',', ' ') ?> eks. mva</div>
     </div>
   </div>
 
