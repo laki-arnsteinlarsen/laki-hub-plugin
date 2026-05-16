@@ -43,7 +43,11 @@ class Edifice_Unimicro {
 
     public static function handle_webhook(WP_REST_Request $request) {
         $raw_body  = $request->get_body();
-        $signature = $request->get_header('unimicro_signature')
+        // DNB/UniMicro bruker Softrig-Signature (Softrig er plattformnavnet).
+        // Unimicro-Signature beholdes som fallback ifoer dokumentert navn dukker opp paa eldre tenants.
+        $signature = $request->get_header('softrig_signature')
+                  ?: $request->get_header('Softrig-Signature')
+                  ?: $request->get_header('unimicro_signature')
                   ?: $request->get_header('Unimicro-Signature')
                   ?: '';
 
@@ -89,8 +93,9 @@ class Edifice_Unimicro {
     }
 
     /**
-     * Verifiser HMAC-SHA256-signaturen fra UniMicro.
-     * Header-format: "t=1600327644,v1=<hex-signatur>"
+     * Verifiser HMAC-SHA256-signaturen fra Softrig/UniMicro.
+     * Header: Softrig-Signature (eller Unimicro-Signature paa eldre tenants).
+     * Format: "t=1600327644,v1=<hex-signatur>"
      * Signaturpayload: "$timestamp.$raw_body"
      */
     public static function verify_signature(string $header, string $raw_body): array {
