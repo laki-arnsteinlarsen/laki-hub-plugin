@@ -72,13 +72,36 @@ class Edifice_Unimicro {
         $entity_name = $payload['EntityName'] ?? '';
         $event_type  = $payload['EventType']  ?? '';
         $entity      = $payload['Entity']     ?? null;
+        $entity_id   = $payload['EntityID'] ?? ($entity['ID'] ?? null);
 
-        if ($entity_name !== 'CustomerInvoice' || ! is_array($entity)) {
-            // Vi er kun interessert i CustomerInvoice; ignorer alt annet stille.
+        if ($entity_name !== 'CustomerInvoice') {
+            error_log(sprintf('[Edifice UniMicro] Skipped: EntityName=%s EventType=%s', $entity_name, $event_type));
             return new WP_REST_Response(['ok' => true, 'skipped' => 'not_customer_invoice'], 200);
         }
 
-        // ── 3. Skriv til edifice_revenue ───────────────────────────────────────
+        // ── 3. Delete-event: slett rad med matching external_id ────────────────
+        // Delete-payloads har gjerne tomt Entity-objekt — vi bruker EntityID fra
+        // toppnivaaet hvis Entity.ID mangler.
+        if ($event_type === 'Delete') {
+            if (! $entity_id) {
+                error_log('[Edifice UniMicro] Delete uten EntityID — ignorerer');
+                return new WP_REST_Response(['ok' => true, 'skipped' => 'delete_without_id'], 200);
+            }
+            $deleted = self::delete_by_external_id((string) $entity_id);
+            error_log(sprintf(
+                '[Edifice UniMicro] Delete CustomerInvoice ID=%s → %s',
+                (string) $entity_id,
+                $deleted ? 'rad slettet' : 'ingen rad funnet'
+            ));
+            return new WP_REST_Response(['ok' => true, 'action' => $deleted ? 'deleted' : 'not_found'], 200);
+        }
+
+        if (! is_array($entity)) {
+            error_log(sprintf('[Edifice UniMicro] Skipped: %s uten Entity-objekt', $event_type));
+            return new WP_REST_Response(['ok' => true, 'skipped' => 'no_entity'], 200);
+        }
+
+        // ── 4. Create/Update: upsert paa edifice_revenue ───────────────────────
         try {
             $result = self::upsert_invoice($entity, $raw_body);
             error_log(sprintf(
@@ -94,6 +117,17 @@ class Edifice_Unimicro {
             error_log('[Edifice UniMicro] Exception under upsert: ' . $e->getMessage());
             return new WP_REST_Response(['ok' => true, 'error' => 'internal'], 200);
         }
+    }
+
+    /**
+     * Slett rad fra edifice_revenue basert paa external_id (UniMicro Entity.ID).
+     * Returnerer true hvis en rad ble slettet.
+     */
+    private static function delete_by_external_id(string $external_id): bool {
+        global $wpdb;
+        $t = $wpdb->prefix . 'edifice_revenue';
+        $deleted = $wpdb->delete($t, ['external_id' => $external_id]);
+        return $deleted > 0;
     }
 
     /**
