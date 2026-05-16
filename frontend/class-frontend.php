@@ -121,7 +121,7 @@ class Edifice_Frontend {
 
   <!-- Sidebar -->
   <nav class="lh-sidebar">
-    <div class="lh-sidebar-logo"><span class="lh-logo-icon">🌋</span><span>Edifice</span></div>
+    <div class="lh-sidebar-logo"><div class="lh-sidebar-logo-text"><span class="lh-sidebar-logo-name">Edifice</span><span class="lh-sidebar-logo-sub">LAKI AS</span></div></div>
     <ul class="lh-nav">
       <li><a href="#dashboard" class="lh-nav-link active" data-section="dashboard">📊 Dashboard</a></li>
       <li><a href="#crm"       class="lh-nav-link"        data-section="crm">👥 CRM</a></li>
