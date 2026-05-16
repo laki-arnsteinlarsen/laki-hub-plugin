@@ -206,19 +206,23 @@ class Edifice_Unimicro {
     }
 
     /**
-     * Upsert basert på external_id (UniMicro Entity.ID).
+     * Upsert basert paa external_id (UniMicro Entity.ID) med fallback til
+     * invoice_nr (InvoiceNumber). Dette gir oss to fordeler:
+     * 1) Backfill kan kjore med kun InvoiceNumber (ingen Entity.ID kjent) og
+     *    senere webhook-Update merger inn ekte Entity.ID paa samme rad.
+     * 2) Webhook-Updates finner alltid riktig rad selv om backfill-importen
+     *    hadde feil eller manglende external_id.
      * Returnerer ['id' => int, 'action' => 'inserted'|'updated'].
      */
     private static function upsert_invoice(array $entity, string $raw_body): array {
         global $wpdb;
         $t = $wpdb->prefix . 'edifice_revenue';
 
-        $external_id = isset($entity['ID']) ? (string) $entity['ID'] : '';
-        if ($external_id === '') {
-            throw new \RuntimeException('Entity.ID mangler');
+        $external_id = isset($entity['ID'])            ? (string) $entity['ID']            : '';
+        $invoice_nr  = isset($entity['InvoiceNumber']) ? (string) $entity['InvoiceNumber'] : '';
+        if ($external_id === '' && $invoice_nr === '') {
+            throw new \RuntimeException('Bade Entity.ID og InvoiceNumber mangler');
         }
-
-        $invoice_nr    = isset($entity['InvoiceNumber']) ? (string) $entity['InvoiceNumber'] : '';
         $date          = isset($entity['InvoiceDate'])    ? substr((string) $entity['InvoiceDate'], 0, 10)    : date('Y-m-d');
         $due_date      = isset($entity['PaymentDueDate']) ? substr((string) $entity['PaymentDueDate'], 0, 10) : null;
         $amount        = isset($entity['TaxInclusiveAmountCurrency']) ? (float) $entity['TaxInclusiveAmountCurrency'] : 0.0;
@@ -240,17 +244,31 @@ class Edifice_Unimicro {
             'due_date'      => $due_date ?: null,
             'status'        => $status,
             'invoice_nr'    => sanitize_text_field($invoice_nr),
-            'external_id'   => $external_id,
             'unimicro_raw'  => $raw_body,
         ];
+        if ($external_id !== '') {
+            $fields['external_id'] = $external_id;
+        }
         if ($contact_id !== null) {
             $fields['contact_id'] = $contact_id;
         }
 
-        $existing_id = $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM $t WHERE external_id = %s LIMIT 1",
-            $external_id
-        ));
+        // Smart matching: forst paa external_id (Entity.ID), deretter fall back
+        // til invoice_nr (InvoiceNumber). Dette tillater backfill-rader uten
+        // Entity.ID aa kobles til ekte webhook-events naar de senere kommer inn.
+        $existing_id = null;
+        if ($external_id !== '') {
+            $existing_id = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM $t WHERE external_id = %s LIMIT 1",
+                $external_id
+            ));
+        }
+        if (! $existing_id && $invoice_nr !== '') {
+            $existing_id = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM $t WHERE invoice_nr = %s LIMIT 1",
+                $invoice_nr
+            ));
+        }
 
         if ($existing_id) {
             $wpdb->update($t, $fields, ['id' => (int) $existing_id]);
