@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.9.3'); // unimicro: StatusCode 42006 (kreditert) -> paid + log ukjente koder
+define('EDIFICE_VERSION', '1.9.4'); // unimicro: smart matching paa external_id + fallback invoice_nr
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
