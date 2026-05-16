@@ -9,7 +9,7 @@
 
 defined('ABSPATH') || exit;
 
-define('EDIFICE_VERSION', '1.7.4'); // products: CSV-import for listings + Etsy API avslått (info-boks)
+define('EDIFICE_VERSION', '1.8.0'); // hosting-modul fase 1: drift+kostnad (Kuma + UptimeRobot)
 define('EDIFICE_DIR', plugin_dir_path(__FILE__));
 define('EDIFICE_URL', plugin_dir_url(__FILE__));
 
@@ -27,6 +27,7 @@ require_once EDIFICE_DIR . 'includes/class-network.php';
 require_once EDIFICE_DIR . 'includes/class-interactions.php';
 require_once EDIFICE_DIR . 'includes/class-sync-imessage.php';
 require_once EDIFICE_DIR . 'includes/class-etsy.php';
+require_once EDIFICE_DIR . 'includes/class-hosting.php';
 require_once EDIFICE_DIR . 'admin/admin.php';
 require_once EDIFICE_DIR . 'frontend/class-frontend.php';
 
@@ -44,6 +45,7 @@ add_action('plugins_loaded', function () {
     Edifice_Network::init();
     Edifice_Interactions::init();
     Edifice_Sync_iMessage::init();
+    Edifice_Hosting::init();
     Edifice_Admin::init();
     Edifice_Frontend::init();
 });

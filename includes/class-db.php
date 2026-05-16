@@ -193,6 +193,24 @@ class Edifice_DB {
             INDEX idx_nace (nace_code)
         ) $c;");
 
+        dbDelta("CREATE TABLE {$wpdb->prefix}edifice_sites (
+            id                     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            name                   VARCHAR(255) NOT NULL,
+            url                    VARCHAR(500) NOT NULL,
+            domain                 VARCHAR(255) DEFAULT NULL,
+            coolify_service_uuid   VARCHAR(255) DEFAULT NULL,
+            coolify_container      VARCHAR(255) DEFAULT NULL,
+            customer_name          VARCHAR(255) DEFAULT NULL,
+            monthly_cost_nok       DECIMAL(10,2) NOT NULL DEFAULT 0,
+            kuma_monitor_id        INT UNSIGNED DEFAULT NULL,
+            uptimerobot_monitor_id VARCHAR(50)  DEFAULT NULL,
+            notes                  TEXT         DEFAULT NULL,
+            active                 TINYINT(1)   NOT NULL DEFAULT 1,
+            created_at             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_active (active)
+        ) $c;");
+
         update_option('edifice_db_version', EDIFICE_VERSION);
     }
 
@@ -514,6 +532,83 @@ class Edifice_DB {
                 INDEX idx_kommune (kommune_nr),
                 INDEX idx_nace (nace_code)
             ) $c;");
+        }
+
+        // ── Migration 17: edifice_sites (hosting-modul, drift+kostnad) ─────────
+        $sites_table = $wpdb->prefix . 'edifice_sites';
+        if ($wpdb->get_var("SHOW TABLES LIKE '$sites_table'") !== $sites_table) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            $c = $wpdb->get_charset_collate();
+            dbDelta("CREATE TABLE $sites_table (
+                id                     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name                   VARCHAR(255) NOT NULL,
+                url                    VARCHAR(500) NOT NULL,
+                domain                 VARCHAR(255) DEFAULT NULL,
+                coolify_service_uuid   VARCHAR(255) DEFAULT NULL,
+                coolify_container      VARCHAR(255) DEFAULT NULL,
+                customer_name          VARCHAR(255) DEFAULT NULL,
+                monthly_cost_nok       DECIMAL(10,2) NOT NULL DEFAULT 0,
+                kuma_monitor_id        INT UNSIGNED DEFAULT NULL,
+                uptimerobot_monitor_id VARCHAR(50)  DEFAULT NULL,
+                notes                  TEXT         DEFAULT NULL,
+                active                 TINYINT(1)   NOT NULL DEFAULT 1,
+                created_at             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_active (active)
+            ) $c;");
+        }
+
+        // Seed initielle siter ved første gangs aktivering. Idempotent via flagg.
+        if (! get_option('edifice_sites_seeded', false)) {
+            $existing = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$sites_table`");
+            if ($existing === 0) {
+                $initial_sites = [
+                    [
+                        'name'              => 'arnsteinlarsen.no',
+                        'url'               => 'https://arnsteinlarsen.no',
+                        'domain'            => 'arnsteinlarsen.no',
+                        'coolify_container' => 'wordpress-y1cxnuencffdyofuhup1swo7',
+                        'customer_name'     => 'LAKI AS',
+                        'monthly_cost_nok'  => 0,
+                    ],
+                    [
+                        'name'              => 'borntoplay.no',
+                        'url'               => 'https://borntoplay.no',
+                        'domain'            => 'borntoplay.no',
+                        'coolify_container' => 'wordpress-k103zs4t7n43272c2kvds93g',
+                        'customer_name'     => 'LAKI AS',
+                        'monthly_cost_nok'  => 0,
+                    ],
+                    [
+                        'name'              => 'boligdama.no',
+                        'url'               => 'https://boligdama.no',
+                        'domain'            => 'boligdama.no',
+                        'coolify_container' => 'wordpress-wagm29yh67zhwyngo6g615qu',
+                        'customer_name'     => '',
+                        'monthly_cost_nok'  => 0,
+                    ],
+                    [
+                        'name'              => 'KBA — Kvinnebevegelsens arkiv',
+                        'url'               => 'https://kba.arnsteinlarsen.no',
+                        'domain'            => 'kba.arnsteinlarsen.no',
+                        'coolify_container' => 'wordpress-t6ocutdm9bhc1d8d4k4z6qed',
+                        'customer_name'     => 'Kvinnebevegelsens arkiv',
+                        'monthly_cost_nok'  => 0,
+                    ],
+                    [
+                        'name'              => 'Edifice',
+                        'url'               => 'https://edifice.arnsteinlarsen.no',
+                        'domain'            => 'edifice.arnsteinlarsen.no',
+                        'coolify_container' => 'wordpress-l78r6g3o96gmke1f64raie3e',
+                        'customer_name'     => 'LAKI AS',
+                        'monthly_cost_nok'  => 0,
+                    ],
+                ];
+                foreach ($initial_sites as $site) {
+                    $wpdb->insert($sites_table, $site);
+                }
+            }
+            update_option('edifice_sites_seeded', true);
         }
     }
 }
