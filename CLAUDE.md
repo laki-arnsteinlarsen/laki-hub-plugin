@@ -108,15 +108,15 @@ edifice/
 | `edifice_contact_interactions` | Interaksjonslogg (kanonisk historikk) |
 | `edifice_projects` | Prosjekter |
 | `edifice_time_entries` | Timeregistreringer |
-| `edifice_revenue` | Fakturaer / inntekt |
+| `edifice_revenue` | Fakturaer / inntekt — `external_id` + `unimicro_raw` for UniMicro-webhook |
 | `edifice_products` | Digitale produkter |
 | `edifice_product_listings` | Kanaldetaljer per produkt (Gumroad/KDP/PromptBase) |
 | `edifice_product_revenue` | Omsetning per produkt |
 | `edifice_prospects` | Brreg-prospekter med advisory-scoring |
 | `edifice_sites` | Hosting: siter på Hetzner med Kuma/UR-monitor-IDer + månedskost |
 
-Nåværende versjon: **1.8.1** — hosting-modul fase 1 (drift + kostnad).
-Siste migrasjonsnummer: **17**.
+Nåværende versjon: **1.9.0** — UniMicro/DNBregnskap webhook-mottaker for fakturasynk.
+Siste migrasjonsnummer: **18**.
 
 ---
 
@@ -253,6 +253,75 @@ Kuma 2.x sitt fulle REST API.
 
 `edifice_hosting_test_alert`-AJAX poster en testmelding til Slack-webhooken slik
 at man kan verifisere at #hosting-varsler får varsler før Kuma/UR utløser dem.
+
+---
+
+## UniMicro / DNBregnskap-modul (v1.9.0+)
+
+Webhook-mottaker som tar imot CustomerInvoice-events fra DNBregnskap og skriver
+til `edifice_revenue`. Filer: `class-unimicro.php`.
+
+### Endepunkt
+
+```
+POST https://edifice.arnsteinlarsen.no/wp-json/edifice/v1/webhook/unimicro?v=2
+```
+
+`?v=2` er ikke kosmetikk — se URL-blacklist-quirk under.
+
+### Signaturverifisering — KRITISK quirk
+
+**DNB sender header `Softrig-Signature`, IKKE `Unimicro-Signature` som dokumentert
+på developer.unimicro.no.** Softrig er plattformnavnet til den nyere UniMicro-stacken
+DNBregnskap kjører på. Format er likt:
+
+```
+Softrig-Signature: t=<unix-ts>,v1=<hex-hmac-sha256>
+```
+
+Signaturpayload = `timestamp + "." + raw_body`, HMAC-SHA256 mot signing key.
+Replay-vindu: 5 min. `class-unimicro.php` prøver alle fire varianter
+(`softrig_signature`, `Softrig-Signature`, `unimicro_signature`, `Unimicro-Signature`)
+for å være trygt mot framtidige tenant-forskjeller.
+
+### URL-blacklist-quirk — KRITISK
+
+**DNB har en URL-basert circuit breaker.** Etter ~4-5 påfølgende 401-feil på en gitt
+webhook-URL slutter DNB internt å pushe til den. Verken automatiserings-toggling eller
+sletting + ny opprettelse reverserer dette.
+
+**Workaround:** legg til en versjons-query-param (`?v=2`) så URL-en blir "ny" hos DNB.
+WP REST API ignorerer ukjente query-params, så routingen er upåvirket. Ved fremtidig
+401-storm: bump til `?v=3`, osv.
+
+### StatusCode-mapping
+
+| UniMicro StatusCode | Edifice `revenue.status` |
+|---------------------|--------------------------|
+| 42001 | `draft` (utkast)     |
+| 42002 | `sent` (fakturert)   |
+| 42003 | `sent` (inkasso)     |
+| 42004 | `paid` (betalt)      |
+| 42005 | `overdue` (purret)   |
+
+### Upsert-logikk
+
+`Entity.ID` fra UniMicro lagres som `external_id` i `edifice_revenue`. Ved Update-event:
+hvis raden finnes → UPDATE; ellers INSERT. Forhindrer duplikater på retries.
+
+`CustomerName` matches mot `edifice_contacts.name` (case-insensitive LIKE). Null `contact_id`
+er OK hvis ingen match.
+
+### Innstillinger (lagres i wp_options)
+
+| Option | Innhold |
+|--------|---------|
+| `edifice_unimicro_signing_key` | HMAC-SHA256-nøkkel (samme verdi i DNB-automatisering + Edifice → Innstillinger) |
+
+### Konfigurasjon i DNBregnskap
+
+Manuelt i UI: **Automatiseringer → Ny → Entitet: CustomerInvoice → Hendelser: alle 3 →
+Jobb: Webhook → URL + Privat nøkkel**. Bytt aldri URL-en uten å bumpe `?v=`.
 
 ---
 

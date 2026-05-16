@@ -7,22 +7,26 @@ defined('ABSPATH') || exit;
  * Lytter på POST /wp-json/edifice/v1/webhook/unimicro og oppdaterer
  * edifice_revenue når CustomerInvoice opprettes/endres/betales i DNBregnskap.
  *
- * Eventplan-konfigurasjon i UniMicro (manuelt etter deploy, se developer.unimicro.no):
+ * Konfigurasjon gjøres manuelt i DNBregnskap-UI under "Automatiseringer":
+ *   - Entitet: CustomerInvoice
+ *   - Hendelser: Oppretting, Endring, Sletting
+ *   - Jobb: Webhook → https://edifice.arnsteinlarsen.no/wp-json/edifice/v1/webhook/unimicro?v=2
+ *   - Privat nøkkel: samme verdi som edifice_unimicro_signing_key (Edifice → Innstillinger)
  *
- *   POST /api/biz/eventplans
- *   {
- *     "Name": "Edifice Faktura-sync",
- *     "Active": true,
- *     "ModelFilter": "CustomerInvoice",
- *     "OperationFilter": "CUD",
- *     "PlanType": 0,
- *     "SigningKey": "<samme verdi som edifice_unimicro_signing_key>",
- *     "EventSubscribers": [{
- *       "Name": "Edifice webhook",
- *       "Endpoint": "https://edifice.arnsteinlarsen.no/wp-json/edifice/v1/webhook/unimicro",
- *       "Active": true
- *     }]
- *   }
+ * Quirks (observert 2026-05-16):
+ *
+ * 1) DNB pusher med header "Softrig-Signature", IKKE "Unimicro-Signature" som
+ *    dokumentert på developer.unimicro.no. Softrig er plattformnavnet til den
+ *    nyere UniMicro-stacken DNBregnskap kjorer paa. Format er likt:
+ *      Softrig-Signature: t=<unix-timestamp>,v1=<hex-hmac-sha256>
+ *    Signaturpayload: timestamp + "." + raw_body.
+ *
+ * 2) URL-basert circuit breaker hos DNB: etter ~4-5 paafoelgende 401-feil
+ *    blokkerer DNB den eksakte URL-en internt. Verken automatiserings-toggling
+ *    eller sletting/ny-oppretting reverserer dette. Workaround: legg til en
+ *    versjons-query-param (?v=2) saa URL blir "ny" hos DNB. WP REST API
+ *    ignorerer ukjente query-params, saa routingen er upaavirket.
+ *    Ved fremtidig 401-storm: bump til ?v=3, osv.
  */
 class Edifice_Unimicro {
 
@@ -55,12 +59,6 @@ class Edifice_Unimicro {
         $verify = self::verify_signature($signature, $raw_body);
         if (! $verify['ok']) {
             error_log('[Edifice UniMicro] Signaturverifisering feilet: ' . $verify['reason']);
-            // DEBUG (kan fjernes naar UniMicro-signering er bekreftet): logg
-            // headers + body slik at vi ser hva UniMicro faktisk sender.
-            if ($verify['reason'] === 'missing_signature' || $verify['reason'] === 'signature_mismatch') {
-                error_log('[Edifice UniMicro DEBUG] Headers: ' . wp_json_encode($request->get_headers()));
-                error_log('[Edifice UniMicro DEBUG] Body (first 800 chars): ' . substr($raw_body, 0, 800));
-            }
             return new WP_REST_Response(['error' => $verify['reason']], 401);
         }
 
