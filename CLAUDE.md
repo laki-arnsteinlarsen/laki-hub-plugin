@@ -108,15 +108,15 @@ edifice/
 | `edifice_contact_interactions` | Interaksjonslogg (kanonisk historikk) |
 | `edifice_projects` | Prosjekter |
 | `edifice_time_entries` | Timeregistreringer |
-| `edifice_revenue` | Fakturaer / inntekt — `external_id` + `unimicro_raw` for UniMicro-webhook |
+| `edifice_revenue` | Fakturaer / inntekt — `external_id` + `unimicro_raw` for UniMicro-webhook, `amount_ex_vat` + `vat_amount` for netto/MVA-visning |
 | `edifice_products` | Digitale produkter |
 | `edifice_product_listings` | Kanaldetaljer per produkt (Gumroad/KDP/PromptBase) |
 | `edifice_product_revenue` | Omsetning per produkt |
 | `edifice_prospects` | Brreg-prospekter med advisory-scoring |
 | `edifice_sites` | Hosting: siter på Hetzner med Kuma/UR-monitor-IDer + månedskost |
 
-Nåværende versjon: **1.9.0** — UniMicro/DNBregnskap webhook-mottaker for fakturasynk.
-Siste migrasjonsnummer: **18**.
+Nåværende versjon: **1.9.6** — UniMicro/DNBregnskap webhook-mottaker + netto/MVA-visning i Inntekt.
+Siste migrasjonsnummer: **19**.
 
 ---
 
@@ -303,14 +303,56 @@ WP REST API ignorerer ukjente query-params, så routingen er upåvirket. Ved fre
 | 42003 | `sent` (inkasso)     |
 | 42004 | `paid` (betalt)      |
 | 42005 | `overdue` (purret)   |
+| 42006 | `paid` (kreditert — sluttbehandlet, inkl. kreditnotaer) |
 
-### Upsert-logikk
+Ukjente koder logges via `error_log` med `var_export` så de er lett synlige i `docker logs`.
 
-`Entity.ID` fra UniMicro lagres som `external_id` i `edifice_revenue`. Ved Update-event:
-hvis raden finnes → UPDATE; ellers INSERT. Forhindrer duplikater på retries.
+### Event-håndtering
+
+| EventType | Oppførsel |
+|-----------|-----------|
+| `Create` / `Update` | upsert på `edifice_revenue` |
+| `Delete` | sletter rad med matching `external_id` (bruker `EntityID` fra payload-toppen siden `Entity`-objektet ofte er tomt for Delete) |
+
+`EntityName != CustomerInvoice` eller manglende Entity logges som "Skipped" — returnerer HTTP 200 for å unngå retry-storm.
+
+### Smart matching i upsert — KRITISK
+
+`upsert_invoice` matcher i denne rekkefølgen:
+
+1. **`external_id` (Entity.ID)** — finnes alltid i webhook-payloads, primær lookup
+2. **`invoice_nr` (InvoiceNumber)** — fallback når Entity.ID ikke kjent (typisk backfill-rader)
+
+Denne dobbel-matchingen sikrer at en backfill-rad (uten Entity.ID) automatisk
+oppdateres når DNB senere sender Update-event for samme InvoiceNumber. Da
+settes også `external_id` på raden, så fremtidige Updates matcher direkte
+på primærnøkkelen.
 
 `CustomerName` matches mot `edifice_contacts.name` (case-insensitive LIKE). Null `contact_id`
 er OK hvis ingen match.
+
+### MVA-felter
+
+`amount_ex_vat` + `vat_amount` (Migration 19) populeres automatisk fra DNB-payload
+(`TaxExclusiveAmountCurrency` + `VatTotalsAmountCurrency`). Visningen i Inntekt-modulen:
+
+- Stat-kortene øverst viser ink. mva som hovedtall med "NOK ink. mva" som inline-suffix,
+  og eks. mva-sum som undertekst.
+- Tabellen har separate kolonner for `Eks. mva`, `MVA`, og `Ink. mva` (sistnevnte i bold).
+- Manuelle skjemaer har tre belopsfelter; bare ink. mva er påkrevd.
+
+### Backfill av historiske fakturaer
+
+Fordi DNB-API krever full OAuth-flyt (sertifikat-basert JWT for server-til-server),
+backfiller vi heller via XLSX-eksport fra DNB. Manuelt engangsoperasjon:
+
+1. I DNBregnskap: gå til faktura-listen → filtrer på år → eksporter til Excel
+2. Kjør lokalt script som leser XLSX, bygger payload som matcher webhook-format,
+   signerer med HMAC-SHA256 og POSTer mot Edifice-endepunktet
+3. Backfill-payloader sender `InvoiceNumber` men IKKE `Entity.ID` — smart matching
+   sørger for at senere webhook-Updates kobles til riktig rad
+
+Eksempel-script ligger ikke i repo (engangsbruk) — kan regenereres ved behov.
 
 ### Innstillinger (lagres i wp_options)
 
