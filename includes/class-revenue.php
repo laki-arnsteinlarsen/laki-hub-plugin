@@ -25,11 +25,17 @@ class Edifice_Revenue {
         global $wpdb;
         $t = $wpdb->prefix . 'edifice_revenue';
         $year = date('Y');
+        // amount_ex_vat kan vaere NULL paa eldre/manuelle rader — bruk amount/1.25 som fallback.
+        $ex = 'COALESCE(amount_ex_vat, amount / 1.25)';
         return [
-            'invoiced_ytd' => (float)$wpdb->get_var("SELECT SUM(amount) FROM $t WHERE YEAR(date)=$year AND status IN ('sent','paid')"),
-            'paid_ytd'     => (float)$wpdb->get_var("SELECT SUM(amount) FROM $t WHERE YEAR(date)=$year AND status='paid'"),
-            'overdue'      => (float)$wpdb->get_var("SELECT SUM(amount) FROM $t WHERE status='overdue'"),
-            'pipeline'     => (float)$wpdb->get_var("SELECT SUM(amount) FROM $t WHERE status='draft'"),
+            'invoiced_ytd'        => (float)$wpdb->get_var("SELECT SUM(amount) FROM $t WHERE YEAR(date)=$year AND status IN ('sent','paid')"),
+            'invoiced_ytd_ex_vat' => (float)$wpdb->get_var("SELECT SUM($ex)  FROM $t WHERE YEAR(date)=$year AND status IN ('sent','paid')"),
+            'paid_ytd'            => (float)$wpdb->get_var("SELECT SUM(amount) FROM $t WHERE YEAR(date)=$year AND status='paid'"),
+            'paid_ytd_ex_vat'     => (float)$wpdb->get_var("SELECT SUM($ex)  FROM $t WHERE YEAR(date)=$year AND status='paid'"),
+            'overdue'             => (float)$wpdb->get_var("SELECT SUM(amount) FROM $t WHERE status='overdue'"),
+            'overdue_ex_vat'      => (float)$wpdb->get_var("SELECT SUM($ex)  FROM $t WHERE status='overdue'"),
+            'pipeline'            => (float)$wpdb->get_var("SELECT SUM(amount) FROM $t WHERE status='draft'"),
+            'pipeline_ex_vat'     => (float)$wpdb->get_var("SELECT SUM($ex)  FROM $t WHERE status='draft'"),
         ];
     }
 
