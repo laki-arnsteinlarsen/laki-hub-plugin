@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  var SECTIONS = ['dashboard', 'crm', 'projects', 'time', 'revenue', 'products', 'prospects', 'network'];
+  var SECTIONS = ['dashboard', 'crm', 'projects', 'time', 'revenue', 'products', 'prospects', 'network', 'hosting'];
 
   function showSection(id) {
     if (SECTIONS.indexOf(id) === -1) id = 'dashboard';

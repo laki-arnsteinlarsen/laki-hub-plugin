@@ -80,6 +80,18 @@ if (!empty($_POST['_regen_autologin_key'])) {
     exit;
 }
 
+// Handle Hosting API-settings save
+if (!empty($_POST['_edifice_hosting_save'])) {
+    check_admin_referer('edifice_hosting_settings');
+    update_option('edifice_kuma_base_url',         esc_url_raw($_POST['kuma_base_url'] ?? ''));
+    update_option('edifice_kuma_api_key',          sanitize_text_field($_POST['kuma_api_key'] ?? ''));
+    update_option('edifice_uptimerobot_key',       sanitize_text_field($_POST['uptimerobot_key'] ?? ''));
+    update_option('edifice_slack_webhook_hosting', esc_url_raw($_POST['slack_webhook_hosting'] ?? ''));
+    update_option('edifice_hetzner_monthly_eur',   (float) ($_POST['hetzner_monthly_eur'] ?? 35));
+    delete_transient(Edifice_Hosting::TRANSIENT_STATUS);
+    echo '<div class="notice notice-success"><p>Hosting-innstillinger lagret. Cache tømt.</p></div>';
+}
+
 
 // Save credentials
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['edifice_gmail_save'])) {
@@ -207,6 +219,75 @@ $auth_url  = Edifice_Gmail::get_auth_url();
       <p style="margin-top:16px;font-size:11px;color:var(--lh-muted)">
         Edifice_Etsy-klassen ligger igjen i kodebasen som arkiv — kan gjenbrukes hvis Etsy senere endrer policy.
       </p>
+    </div>
+  </div>
+
+  <!-- Hosting card -->
+  <?php
+    $kuma_base    = get_option('edifice_kuma_base_url', 'https://status.arnsteinlarsen.no');
+    $kuma_key     = get_option('edifice_kuma_api_key', '');
+    $ur_key       = get_option('edifice_uptimerobot_key', '');
+    $slack_hook   = get_option('edifice_slack_webhook_hosting', '');
+    $hetzner_eur  = get_option('edifice_hetzner_monthly_eur', 35);
+    $hosting_ok   = $kuma_key && $ur_key;
+  ?>
+  <div class="lh-card" style="margin-top:24px">
+    <div class="lh-card-head">
+      <h2>🖥️ Hosting-overvåking</h2>
+      <span class="lh-badge <?= $hosting_ok ? 'lh-badge-green' : 'lh-badge-gray' ?>">
+        <?= $hosting_ok ? 'Konfigurert' : 'Ikke fullkonfigurert' ?>
+      </span>
+    </div>
+    <div class="lh-card-body">
+      <p style="font-size:13px;color:var(--lh-muted);margin:0 0 20px">
+        API-nøkler for Uptime Kuma og UptimeRobot, samt Slack-webhook til <code>#hosting-varsler</code>.
+        Hetzner-månedskost brukes til snittberegning per site på Hosting-fanen.
+      </p>
+
+      <form method="post" action="">
+        <?php wp_nonce_field('edifice_hosting_settings'); ?>
+        <input type="hidden" name="_edifice_hosting_save" value="1">
+
+        <div class="lh-form-grid" style="max-width:720px">
+          <div class="lh-form-row">
+            <label>Uptime Kuma base URL</label>
+            <input type="url" name="kuma_base_url"
+                   value="<?= esc_attr($kuma_base) ?>"
+                   placeholder="https://status.arnsteinlarsen.no">
+          </div>
+          <div class="lh-form-row">
+            <label>Kuma API-nøkkel</label>
+            <input type="password" name="kuma_api_key"
+                   value="<?= esc_attr($kuma_key) ?>"
+                   placeholder="••••••••">
+          </div>
+          <div class="lh-form-row">
+            <label>UptimeRobot API-nøkkel</label>
+            <input type="password" name="uptimerobot_key"
+                   value="<?= esc_attr($ur_key) ?>"
+                   placeholder="••••••••">
+          </div>
+          <div class="lh-form-row">
+            <label>Hetzner månedskost (EUR)</label>
+            <input type="number" step="0.01" name="hetzner_monthly_eur"
+                   value="<?= esc_attr($hetzner_eur) ?>">
+          </div>
+        </div>
+
+        <div class="lh-form-row" style="max-width:720px">
+          <label>Slack webhook for #hosting-varsler</label>
+          <input type="url" name="slack_webhook_hosting"
+                 value="<?= esc_attr($slack_hook) ?>"
+                 placeholder="https://hooks.slack.com/services/...">
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-top:16px">
+          <button type="submit" class="lh-btn lh-btn-primary">Lagre Hosting-innstillinger</button>
+          <span style="font-size:11px;color:var(--lh-muted)">
+            Lagring tømmer status-cachen så ny data hentes umiddelbart.
+          </span>
+        </div>
+      </form>
     </div>
   </div>
 
