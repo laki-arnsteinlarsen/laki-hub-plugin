@@ -8,8 +8,9 @@ defined('ABSPATH') || exit;
 class Edifice_Frontend {
 
     public static function init() {
+        // Server ikoner SAA tidlig som mulig (foer WP rekker aa flagge 404)
+        add_action('init',              [__CLASS__, 'serve_root_icons'], 0);
         add_action('init',              [__CLASS__, 'create_hub_page']);
-        add_action('template_redirect', [__CLASS__, 'serve_root_icons'], 0);
         add_action('template_redirect', [__CLASS__, 'login_wall'], 1);
         add_action('template_redirect', [__CLASS__, 'render_hub'], 5);
     }
@@ -40,6 +41,9 @@ class Edifice_Frontend {
         if (!file_exists($path)) return;
 
         $mime = (substr($path, -4) === '.svg') ? 'image/svg+xml' : 'image/png';
+        header_remove('X-Pingback');
+        if (function_exists('status_header')) status_header(200);
+        else                                  header('HTTP/1.1 200 OK');
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . filesize($path));
         header('Cache-Control: public, max-age=86400');
