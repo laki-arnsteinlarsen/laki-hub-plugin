@@ -9,8 +9,42 @@ class Edifice_Frontend {
 
     public static function init() {
         add_action('init',              [__CLASS__, 'create_hub_page']);
+        add_action('template_redirect', [__CLASS__, 'serve_root_icons'], 0);
         add_action('template_redirect', [__CLASS__, 'login_wall'], 1);
         add_action('template_redirect', [__CLASS__, 'render_hub'], 5);
+    }
+
+    /**
+     * Serve apple-touch-icon and favicon at root paths.
+     *
+     * iOS Safari probes hardcoded URLs at the document root when adding to
+     * home screen (apple-touch-icon.png, apple-touch-icon-precomposed.png) —
+     * even when a <link rel="apple-touch-icon"> tag is present, falling back
+     * to root probing if the HTML lookup misses for any reason (caching,
+     * partial loads, etc.). Serving the file at root maximises reliability.
+     */
+    public static function serve_root_icons() {
+        $uri = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
+        if (!$uri) return;
+
+        $map = [
+            '/apple-touch-icon.png'             => 'assets/images/apple-touch-icon.png',
+            '/apple-touch-icon-precomposed.png' => 'assets/images/apple-touch-icon.png',
+            '/favicon.ico'                      => 'assets/images/favicon.svg',
+            '/favicon.svg'                      => 'assets/images/favicon.svg',
+        ];
+
+        if (!isset($map[$uri])) return;
+
+        $path = EDIFICE_DIR . $map[$uri];
+        if (!file_exists($path)) return;
+
+        $mime = (substr($path, -4) === '.svg') ? 'image/svg+xml' : 'image/png';
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . filesize($path));
+        header('Cache-Control: public, max-age=86400');
+        readfile($path);
+        exit;
     }
 
     /**
@@ -101,7 +135,8 @@ class Edifice_Frontend {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Edifice</title>
   <link rel="icon" type="image/svg+xml" href="<?= esc_url($plugin_url) ?>assets/images/favicon.svg">
-  <link rel="apple-touch-icon" sizes="180x180" href="<?= esc_url($plugin_url) ?>assets/images/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="<?= esc_url($plugin_url) ?>assets/images/apple-touch-icon.png?v=2">
+  <link rel="apple-touch-icon-precomposed" sizes="180x180" href="<?= esc_url($plugin_url) ?>assets/images/apple-touch-icon.png?v=2">
   <meta name="apple-mobile-web-app-title" content="Edifice">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
