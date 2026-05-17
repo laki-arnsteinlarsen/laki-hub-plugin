@@ -6,6 +6,21 @@
 
   var SECTIONS = ['dashboard', 'crm', 'projects', 'time', 'revenue', 'products', 'prospects', 'network', 'hosting'];
 
+  function closeDrawer() {
+    document.body.classList.remove('lh-sidebar-open');
+    var btn = document.querySelector('.lh-hamburger');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+  function openDrawer() {
+    document.body.classList.add('lh-sidebar-open');
+    var btn = document.querySelector('.lh-hamburger');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+  }
+  function toggleDrawer() {
+    if (document.body.classList.contains('lh-sidebar-open')) closeDrawer();
+    else openDrawer();
+  }
+
   function showSection(id) {
     if (SECTIONS.indexOf(id) === -1) id = 'dashboard';
 
@@ -26,6 +41,10 @@
     // Scroll main back to top
     var main = document.querySelector('.lh-main');
     if (main) main.scrollTop = 0;
+    window.scrollTo(0, 0);
+
+    // Lukk mobil-drawer
+    closeDrawer();
   }
 
   // Sidebar nav clicks
@@ -42,6 +61,17 @@
     if (!link) return;
     e.preventDefault();
     showSection(link.dataset.section);
+  });
+
+  // Hamburger + backdrop + Escape
+  var hamburger = document.querySelector('.lh-hamburger');
+  if (hamburger) hamburger.addEventListener('click', toggleDrawer);
+
+  var backdrop = document.querySelector('.lh-sidebar-backdrop');
+  if (backdrop) backdrop.addEventListener('click', closeDrawer);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeDrawer();
   });
 
   // Honour URL hash on initial load

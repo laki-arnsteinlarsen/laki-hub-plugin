@@ -100,6 +100,12 @@ class Edifice_Frontend {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Edifice</title>
+  <link rel="icon" type="image/svg+xml" href="<?= esc_url($plugin_url) ?>assets/images/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="<?= esc_url($plugin_url) ?>assets/images/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="Edifice">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#1E3A5F">
   <link rel="stylesheet" href="<?= esc_url($plugin_url) ?>assets/css/admin.css">
   <link rel="stylesheet" href="<?= esc_url($plugin_url) ?>assets/css/frontend.css">
   <script src="<?= includes_url('js/jquery/jquery.min.js') ?>"></script>
@@ -119,8 +125,19 @@ class Edifice_Frontend {
             duplikat-inclusions fra crm.php/network.php nedenfor. */ ?>
   <?php include EDIFICE_DIR . 'admin/views/_interaction-log-modal.php'; ?>
 
+  <!-- Mobile topbar (skjult på desktop) -->
+  <header class="lh-mobile-topbar" role="banner">
+    <button type="button" class="lh-hamburger" aria-label="Åpne meny" aria-expanded="false" aria-controls="lh-sidebar">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="lh-mobile-title">Edifice</span>
+  </header>
+
+  <!-- Backdrop for åpen meny (kun mobil) -->
+  <div class="lh-sidebar-backdrop" aria-hidden="true"></div>
+
   <!-- Sidebar -->
-  <nav class="lh-sidebar">
+  <nav class="lh-sidebar" id="lh-sidebar">
     <div class="lh-sidebar-logo"><div class="lh-sidebar-logo-text"><span class="lh-sidebar-logo-name">Edifice</span><span class="lh-sidebar-logo-sub">LAKI AS</span></div></div>
     <ul class="lh-nav">
       <li><a href="#dashboard" class="lh-nav-link active" data-section="dashboard">📊 Dashboard</a></li>
