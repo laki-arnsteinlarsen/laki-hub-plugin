@@ -152,16 +152,14 @@ body.lh-app {
   .lh-nav        {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding: 4px 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 4px 6px 6px;
     flex: 0 0 auto;
+    row-gap: 2px;
   }
-  .lh-nav::-webkit-scrollbar { display: none; }
-  .lh-nav li     { padding: 4px 2px; flex-shrink: 0; }
-  .lh-nav-link   { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+  .lh-nav li     { padding: 2px 2px; flex: 0 0 auto; }
+  .lh-nav-link   { padding: 6px 9px; font-size: 12px; white-space: nowrap; }
   .lh-nav-link.active {
     border-right: none;
     border-bottom: 2px solid #C9A84C;
